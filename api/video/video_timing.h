@@ -116,8 +116,8 @@ struct TimingFrameInfo {
 struct VideoPlayoutDelay {
   VideoPlayoutDelay() = default;
   VideoPlayoutDelay(int min_ms, int max_ms) : min_ms(min_ms), max_ms(max_ms) {}
-  int min_ms = -1;
-  int max_ms = -1;
+  int min_ms = 0;
+  int max_ms = 0;
 
   bool operator==(const VideoPlayoutDelay& rhs) const {
     return min_ms == rhs.min_ms && max_ms == rhs.max_ms;
