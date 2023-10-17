@@ -1789,6 +1789,8 @@ void WebRtcVideoChannel::OnPacketReceived(
 
   // TODO(bugs.webrtc.org/137439): Stop posting to the worker thread when the
   // combined network/worker project launches.
+  int64_t start_time_nanos = rtc::TimeNanos();
+  RTC_LOG(LS_INFO) << "WebRtcVideoChannel::OnPacketReceived" << start_time_nanos;
   if (webrtc::TaskQueueBase::Current() != worker_thread_) {
     worker_thread_->PostTask(
         SafeTask(task_safety_.flag(), [this, packet = packet]() mutable {

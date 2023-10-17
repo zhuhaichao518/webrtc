@@ -130,7 +130,7 @@ void ScreenCapturerWinDirectx::CaptureFrame() {
   TRACE_EVENT0("webrtc", "ScreenCapturerWinDirectx::CaptureFrame");
 
   int64_t capture_start_time_nanos = rtc::TimeNanos();
-
+  RTC_LOG(LS_INFO) << "starting duplication::" << capture_start_time_nanos;
   // Note that the [] operator will create the ScreenCaptureFrameQueue if it
   // doesn't exist, so this is safe.
   ScreenCaptureFrameQueue<DxgiFrame>& frames =

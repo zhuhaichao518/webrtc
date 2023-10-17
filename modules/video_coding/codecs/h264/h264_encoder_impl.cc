@@ -411,6 +411,7 @@ void H264EncoderImpl::SetRates(const RateControlParameters& parameters) {
 int32_t H264EncoderImpl::Encode(
     const VideoFrame& input_frame,
     const std::vector<VideoFrameType>* frame_types) {
+  RTC_LOG(LS_INFO) << "bigin Encoding::" << rtc::TimeNanos();
   if (encoders_.empty()) {
     ReportError();
     return WEBRTC_VIDEO_CODEC_UNINITIALIZED;
@@ -589,6 +590,7 @@ int32_t H264EncoderImpl::Encode(
         }
         codec_specific.scalability_mode = scalability_modes_[i];
       }
+      RTC_LOG(LS_INFO) << "end Encoding::" << rtc::TimeNanos();
       encoded_image_callback_->OnEncodedImage(encoded_images_[i],
                                               &codec_specific);
     }

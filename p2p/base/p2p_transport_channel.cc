@@ -2206,7 +2206,8 @@ void P2PTransportChannel::OnReadPacket(Connection* connection,
                                        size_t len,
                                        int64_t packet_time_us) {
   RTC_DCHECK_RUN_ON(network_thread_);
-
+  int64_t start_time_nanos = rtc::TimeNanos();
+  RTC_LOG(LS_INFO) << "recieve packet::" << start_time_nanos;
   if (connection == selected_connection_) {
     // Let the client know of an incoming packet
     packets_received_++;

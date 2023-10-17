@@ -30,6 +30,7 @@
 #include "rtc_base/checks.h"
 #include "rtc_base/logging.h"
 #include "rtc_base/thread_annotations.h"
+#include "rtc_base/time_utils.h"
 #include "video/frame_decode_scheduler.h"
 #include "video/frame_decode_timing.h"
 #include "video/task_queue_frame_decode_scheduler.h"
@@ -192,6 +193,8 @@ int VideoStreamBufferController::Size() {
 void VideoStreamBufferController::OnFrameReady(
     absl::InlinedVector<std::unique_ptr<EncodedFrame>, 4> frames,
     Timestamp render_time) {
+  int64_t start_time_nanos = rtc::TimeNanos();
+  RTC_LOG(LS_INFO) << "VideoStreamBufferController::OnFrameReady!" << start_time_nanos;
   RTC_DCHECK_RUN_ON(&worker_sequence_checker_);
   RTC_CHECK(!frames.empty())
       << "Callers must ensure there is at least one frame to decode.";
@@ -281,6 +284,8 @@ void VideoStreamBufferController::FrameReadyForDecode(uint32_t rtp_timestamp,
   RTC_DCHECK_RUN_ON(&worker_sequence_checker_);
   // Check that the frame to decode is still valid before passing the frame for
   // decoding.
+  int64_t start_time_nanos = rtc::TimeNanos();
+  RTC_LOG(LS_INFO) << "VideoStreamBufferController::FrameReadyForDecode!" << start_time_nanos;
   auto decodable_tu_info = buffer_->DecodableTemporalUnitsInfo();
   if (!decodable_tu_info) {
     RTC_LOG(LS_ERROR)

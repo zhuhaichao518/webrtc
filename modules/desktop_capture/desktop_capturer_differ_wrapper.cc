@@ -196,6 +196,7 @@ void DesktopCapturerDifferWrapper::OnCaptureResult(
     Result result,
     std::unique_ptr<DesktopFrame> input_frame) {
   int64_t start_time_nanos = rtc::TimeNanos();
+  //RTC_LOG(LS_INFO) << "before frame share:" << rtc::TimeNanos();
   if (!input_frame) {
     callback_->OnCaptureResult(result, nullptr);
     return;
@@ -222,9 +223,9 @@ void DesktopCapturerDifferWrapper::OnCaptureResult(
         DesktopRect::MakeSize(frame->size()));
   }
   last_frame_ = frame->Share();
-
+  int64_t end_time_nanos = rtc::TimeNanos();
   frame->set_capture_time_ms(frame->capture_time_ms() +
-                             (rtc::TimeNanos() - start_time_nanos) /
+                             (end_time_nanos - start_time_nanos) /
                                  rtc::kNumNanosecsPerMillisec);
   callback_->OnCaptureResult(result, std::move(frame));
 }

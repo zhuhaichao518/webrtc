@@ -752,6 +752,8 @@ bool VideoReceiveStream2::SetMinimumPlayoutDelay(int delay_ms) {
 void VideoReceiveStream2::OnEncodedFrame(std::unique_ptr<EncodedFrame> frame) {
   RTC_DCHECK_RUN_ON(&packet_sequence_checker_);
   Timestamp now = clock_->CurrentTime();
+  int64_t start_time_nanos = rtc::TimeNanos();
+  RTC_LOG(LS_INFO) << "VideoReceiveStream2::OnEncodedFrame" << start_time_nanos;
   const bool keyframe_request_is_due =
       !last_keyframe_request_ ||
       now >= (*last_keyframe_request_ + max_wait_for_keyframe_);

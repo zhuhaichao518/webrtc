@@ -198,6 +198,7 @@ void DesktopAndCursorComposer::SetSharedMemoryFactory(
 }
 
 void DesktopAndCursorComposer::CaptureFrame() {
+  RTC_LOG(LS_INFO) << "starting capture frame";
   if (mouse_monitor_)
     mouse_monitor_->Capture();
   desktop_capturer_->CaptureFrame();
