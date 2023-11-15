@@ -138,7 +138,8 @@ BandwidthQualityScaler::CheckBitrate() {
   } else if (current_bitrate_bps <
              suitable_bitrate_limit->min_start_bitrate_bps *
                  kLowerMinBitrateTolerationFactor) {
-    return BandwidthQualityScaler::CheckBitrateResult::kHighBitRate;
+    //todo:check suitable_bitrate_limit
+    return BandwidthQualityScaler::CheckBitrateResult::kNormalBitrate;
   }
   return BandwidthQualityScaler::CheckBitrateResult::kNormalBitrate;
 }

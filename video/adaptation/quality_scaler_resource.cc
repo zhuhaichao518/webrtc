@@ -89,7 +89,8 @@ void QualityScalerResource::OnFrameDropped(
 }
 
 void QualityScalerResource::OnReportQpUsageHigh() {
-  OnResourceUsageStateMeasured(ResourceUsageState::kOveruse);
+  //OnResourceUsageStateMeasured(ResourceUsageState::kOveruse);
+  return;
 }
 
 void QualityScalerResource::OnReportQpUsageLow() {

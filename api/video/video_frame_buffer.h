@@ -71,6 +71,7 @@ class RTC_EXPORT VideoFrameBuffer : public rtc::RefCountInterface {
   virtual int width() const = 0;
   virtual int height() const = 0;
 
+  virtual void* GetNative() const {return nullptr;}
   // Returns a memory-backed frame buffer in I420 format. If the pixel data is
   // in another format, a conversion will take place. All implementations must
   // provide a fallback to I420 for compatibility with e.g. the internal WebRTC
@@ -132,12 +133,19 @@ class RTC_EXPORT VideoFrameBuffer : public rtc::RefCountInterface {
 // Update when VideoFrameBuffer::Type is updated.
 const char* VideoFrameBufferTypeToString(VideoFrameBuffer::Type type);
 
-// This interface represents planar formats.
-class PlanarYuvBuffer : public VideoFrameBuffer {
+class ChromaBuffer: public VideoFrameBuffer {
  public:
   virtual int ChromaWidth() const = 0;
   virtual int ChromaHeight() const = 0;
 
+ protected:
+  ~ChromaBuffer() override {}
+};
+
+
+// This interface represents planar formats.
+class PlanarYuvBuffer : public ChromaBuffer {
+ public:
   // Returns the number of steps(in terms of Data*() return type) between
   // successive rows for a given plane.
   virtual int StrideY() const = 0;
@@ -277,11 +285,8 @@ class I410BufferInterface : public PlanarYuv16BBuffer {
   ~I410BufferInterface() override {}
 };
 
-class BiplanarYuvBuffer : public VideoFrameBuffer {
+class BiplanarYuvBuffer : public ChromaBuffer {
  public:
-  virtual int ChromaWidth() const = 0;
-  virtual int ChromaHeight() const = 0;
-
   // Returns the number of steps(in terms of Data*() return type) between
   // successive rows for a given plane.
   virtual int StrideY() const = 0;

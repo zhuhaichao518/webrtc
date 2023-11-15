@@ -24,11 +24,14 @@ extern "C" {
 #include "third_party/ffmpeg/libavcodec/avcodec.h"
 #include "third_party/ffmpeg/libavformat/avformat.h"
 #include "third_party/ffmpeg/libavutil/imgutils.h"
+#include "third_party/ffmpeg/libavutil/hwcontext_d3d11va.h"
+#include "third_party/ffmpeg/libavutil/hwcontext.h"
 }  // extern "C"
 
 #include "api/video/color_space.h"
 #include "api/video/i010_buffer.h"
 #include "api/video/i420_buffer.h"
+#include "api/video/native_handle_buffer.h"
 #include "common_video/include/video_frame_buffer.h"
 #include "modules/video_coding/codecs/h264/h264_color_space.h"
 #include "rtc_base/checks.h"
@@ -39,10 +42,11 @@ namespace webrtc {
 
 namespace {
 
-constexpr std::array<AVPixelFormat, 9> kPixelFormatsSupported = {
+constexpr std::array<AVPixelFormat, 11> kPixelFormatsSupported = {
     AV_PIX_FMT_YUV420P,     AV_PIX_FMT_YUV422P,     AV_PIX_FMT_YUV444P,
     AV_PIX_FMT_YUVJ420P,    AV_PIX_FMT_YUVJ422P,    AV_PIX_FMT_YUVJ444P,
-    AV_PIX_FMT_YUV420P10LE, AV_PIX_FMT_YUV422P10LE, AV_PIX_FMT_YUV444P10LE};
+    AV_PIX_FMT_YUV420P10LE, AV_PIX_FMT_YUV422P10LE, AV_PIX_FMT_YUV444P10LE,
+    AV_PIX_FMT_NV12,        AV_PIX_FMT_D3D11};
 const size_t kYPlaneIndex = 0;
 const size_t kUPlaneIndex = 1;
 const size_t kVPlaneIndex = 2;
@@ -114,13 +118,14 @@ int H264DecoderImpl::AVGetBuffer2(AVCodecContext* context,
   // http://crbug.com/390941. Our pool is set up to zero-initialize new buffers.
   // TODO(https://crbug.com/390941): Delete that feature from the video pool,
   // instead add an explicit call to InitializeData here.
-  rtc::scoped_refptr<PlanarYuvBuffer> frame_buffer;
+  rtc::scoped_refptr<ChromaBuffer> frame_buffer;
   rtc::scoped_refptr<I444Buffer> i444_buffer;
   rtc::scoped_refptr<I420Buffer> i420_buffer;
   rtc::scoped_refptr<I422Buffer> i422_buffer;
   rtc::scoped_refptr<I010Buffer> i010_buffer;
   rtc::scoped_refptr<I210Buffer> i210_buffer;
   rtc::scoped_refptr<I410Buffer> i410_buffer;
+  rtc::scoped_refptr<NV12Buffer> nv12_buffer;
   int bytes_per_pixel = 1;
   switch (context->pix_fmt) {
     case AV_PIX_FMT_YUV420P:
@@ -211,6 +216,19 @@ int H264DecoderImpl::AVGetBuffer2(AVCodecContext* context,
       frame_buffer = i410_buffer;
       bytes_per_pixel = 2;
       break;
+    case AV_PIX_FMT_NV12:
+      //todo(haichao):make this correct
+      nv12_buffer =
+          decoder->ffmpeg_buffer_pool_.CreateNV12Buffer(width, height);
+      av_frame->data[0] = nv12_buffer->MutableDataY();
+      av_frame->linesize[0] = nv12_buffer->StrideY();
+
+      av_frame->data[1] = nv12_buffer->MutableDataUV();
+      av_frame->linesize[1] = nv12_buffer->StrideUV();
+      //RTC_DCHECK_EQ(av_frame->linesize[1], av_frame->linesize[0] * 2);
+
+      frame_buffer = nv12_buffer;
+      break;
     default:
       RTC_LOG(LS_ERROR) << "Unsupported buffer type " << context->pix_fmt
                         << ". Check supported supported pixel formats!";
@@ -266,6 +284,107 @@ H264DecoderImpl::~H264DecoderImpl() {
   Release();
 }
 
+const uint8_t k_H264TestFrame[] = {
+    0x00, 0x00, 0x00, 0x01, 0x67, 0x64, 0x00, 0x20, 0xac, 0x2b, 0x40, 0x28,
+    0x02, 0xdd, 0x80, 0xb5, 0x06, 0x06, 0x06, 0xa5, 0x00, 0x00, 0x03, 0x03,
+    0xe8, 0x00, 0x01, 0xd4, 0xc0, 0x8f, 0x4a, 0xa0, 0x00, 0x00, 0x00, 0x01,
+    0x68, 0xee, 0x3c, 0xb0, 0x00, 0x00, 0x00, 0x01, 0x65, 0xb8, 0x02, 0x01,
+    0x67, 0x25, 0x1b, 0xf4, 0xfa, 0x7d, 0x40, 0x1a, 0x78, 0xe5, 0x10, 0x52,
+    0xc2, 0xee, 0x00, 0x00, 0x03, 0x00, 0x00, 0x03, 0x00, 0x00, 0x03, 0x00,
+    0xc6, 0xef, 0xbb, 0x81, 0x85, 0x2d, 0x47, 0xda, 0xca, 0x4c, 0x00, 0x00,
+    0x03, 0x00, 0x02, 0x7b, 0xcf, 0x80, 0x00, 0x45, 0x40, 0x01, 0x8d, 0xa6,
+    0x00, 0x01, 0x64, 0x00, 0x0e, 0x03, 0xc8, 0x00, 0x0e, 0x10, 0x00, 0xbd,
+    0xc5, 0x00, 0x01, 0x11, 0x00, 0x0e, 0xa3, 0x80, 0x00, 0x38, 0xa0, 0x00,
+    0x00, 0x01, 0x65, 0x00, 0x6e, 0x2e, 0x00, 0x83, 0x7f, 0xb4, 0x8e, 0x79,
+    0xa5, 0xff, 0x84, 0x3f, 0x7f, 0x34, 0x3f, 0x97, 0x1b, 0xaf, 0x31, 0x5f,
+    0x6e, 0xaa, 0xb6, 0xac, 0x00, 0x00, 0x03, 0x00, 0x00, 0x03, 0x00, 0x00,
+    0x03, 0x00, 0x00, 0x78, 0x36, 0x9d, 0xa4, 0x65, 0xf9, 0x1e, 0x5b, 0x3a,
+    0xb0, 0x40, 0x00, 0x00, 0x03, 0x00, 0x00, 0x41, 0x80, 0x00, 0xc5, 0xc8,
+    0x00, 0x00, 0xfa, 0x00, 0x03, 0x24, 0x00, 0x0e, 0x20, 0x00, 0x3f, 0x80,
+    0x01, 0x32, 0x00, 0x08, 0x68, 0x00, 0x3e, 0xc0, 0x03, 0x8a, 0x00, 0x00,
+    0x01, 0x65, 0x00, 0x37, 0x0b, 0x80, 0x21, 0x7f, 0xe3, 0x85, 0x1c, 0xd9,
+    0xff, 0xe1, 0x1b, 0x01, 0xfa, 0xc0, 0x3e, 0x11, 0x7e, 0xfe, 0x45, 0x5c,
+    0x43, 0x69, 0x31, 0x4b, 0x00, 0x00, 0x03, 0x00, 0x00, 0x03, 0x00, 0x00,
+    0x03, 0x00, 0x00, 0x03, 0x02, 0x24, 0xae, 0x1a, 0xbb, 0xae, 0x75, 0x9e,
+    0x35, 0xae, 0x00, 0x00, 0x03, 0x00, 0x00, 0x03, 0x03, 0x64, 0x00, 0x09,
+    0x98, 0x00, 0x1e, 0xc0, 0x00, 0x64, 0x80, 0x01, 0xc4, 0x00, 0x07, 0xf0,
+    0x00, 0x42, 0xf0, 0x00, 0x00, 0xe1, 0x98, 0x00, 0x05, 0x4b, 0x28, 0x00,
+    0x06, 0x04, 0x00, 0x00, 0x01, 0x65, 0x00, 0x14, 0xa2, 0xe0, 0x08, 0x5f,
+    0xe3, 0x85, 0x1c, 0xd9, 0xff, 0xe1, 0x1b, 0x01, 0xfa, 0xc0, 0x3e, 0x11,
+    0x7e, 0xfe, 0x45, 0x5c, 0x43, 0x69, 0x31, 0x4b, 0x00, 0x00, 0x03, 0x00,
+    0x00, 0x03, 0x00, 0x00, 0x03, 0x00, 0x00, 0x03, 0x02, 0x24, 0xb9, 0x7d,
+    0xb4, 0x70, 0x4d, 0x15, 0xc5, 0x0a, 0x4e, 0x60, 0x00, 0x00, 0x03, 0x00,
+    0x00, 0x26, 0xa8, 0xb0, 0x00, 0x13, 0xcd, 0xcc, 0x00, 0x07, 0x48, 0x88,
+    0x00, 0x06, 0x29, 0x69, 0x00, 0x01, 0x16, 0xac, 0x80, 0x00, 0x9e, 0x4e,
+    0x80, 0x00, 0x3f, 0x84, 0x20, 0x00, 0x6f, 0x41, 0xa0, 0x00, 0x20, 0x00,
+    0x02, 0x16, 0xb8, 0x00, 0x08, 0x08};
+
+ID3D11Texture2D* CreateSharedTexture(int width, int height, ID3D11Device* device) {
+    D3D11_TEXTURE2D_DESC textureDesc = {};
+    textureDesc.Width = width;
+    textureDesc.Height = height;
+    textureDesc.MipLevels = 1;
+    textureDesc.ArraySize = 1;
+    textureDesc.Format = DXGI_FORMAT_NV12;  // Adjust format as needed
+    textureDesc.SampleDesc.Count = 1;
+    textureDesc.Usage = D3D11_USAGE_DEFAULT;
+    textureDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET; // Add flags based on your requirements
+    textureDesc.MiscFlags = D3D11_RESOURCE_MISC_SHARED; // Flag for shared texture
+
+    ID3D11Texture2D* d3dTexture = nullptr;
+    device->CreateTexture2D(&textureDesc, nullptr, &d3dTexture);
+    return d3dTexture;
+}
+
+int H264DecoderImpl::InitializeD3D11Device() {
+    /* int adapterIndex;
+    HRESULT hr;
+
+    hr = CreateDXGIFactory(__uuidof(IDXGIFactory5), (void**)&m_Factory);
+    if (FAILED(hr)) {
+    return hr;
+    }
+
+    IDXGIAdapter* adapter;
+    hr = m_Factory->EnumAdapters(adapterIndex, &adapter);
+    if (FAILED(hr)) {
+    return hr;
+    }
+    */
+    if (d3dDevice_ == nullptr) {
+
+    D3D_FEATURE_LEVEL featureLevel;
+    HRESULT hr = D3D11CreateDevice(
+        nullptr /* adapter*/, D3D_DRIVER_TYPE_HARDWARE, nullptr,
+                                   D3D11_CREATE_DEVICE_VIDEO_SUPPORT,
+                                   nullptr, 0,
+        D3D11_SDK_VERSION, &d3dDevice_, &featureLevel, &d3dDeviceContext_);
+    if (hr != 0)
+      return -1;
+    }
+    return 0;
+}
+
+int H264DecoderImpl::InitializeD3D11Texture(int width, int height){
+    if (d3dTexture_!=nullptr){
+      d3dTexture_->Release();
+    }
+    d3dTexture_ = CreateSharedTexture(width, height, d3dDevice_);
+    if (d3dTexture_ == nullptr){
+      return -1;
+    }
+    return 0;
+/*
+    //maybe we return a shared handle instead of a texture.
+    HANDLE sharedHandle = nullptr;
+    hr = sharedTexture->QueryInterface(__uuidof(IDXGIResource), reinterpret_cast<void**>(&sharedTexture));
+    CheckResult(hr, "QueryInterface");
+
+    hr = reinterpret_cast<IDXGIResource*>(sharedTexture)->GetSharedHandle(&sharedHandle);
+    CheckResult(hr, "GetSharedHandle");
+*/
+}
+
 bool H264DecoderImpl::Configure(const Settings& settings) {
   ReportInit();
   if (settings.codec_type() != kVideoCodecH264) {
@@ -291,35 +410,169 @@ bool H264DecoderImpl::Configure(const Settings& settings) {
     av_context_->coded_width = resolution.Width();
     av_context_->coded_height = resolution.Height();
   }
+  //data in webrtc does not include this.
   av_context_->extradata = nullptr;
   av_context_->extradata_size = 0;
 
   // If this is ever increased, look at `av_context_->thread_safe_callbacks` and
   // make it possible to disable the thread checker in the frame buffer pool.
   av_context_->thread_count = 1;
-  av_context_->thread_type = FF_THREAD_SLICE;
+  //software rendering
+  //av_context_->thread_type = FF_THREAD_SLICE;
+
+  av_context_->flags |= AV_CODEC_FLAG_LOW_DELAY;
+
+  // Allow display of corrupt frames and frames missing references
+  av_context_->flags |= AV_CODEC_FLAG_OUTPUT_CORRUPT;
+  av_context_->flags2 |= AV_CODEC_FLAG2_SHOW_ALL;
+  // Report decoding errors to allow us to request a key frame
+  //
+  // With HEVC streams, FFmpeg can drop a frame (hwaccel->start_frame() fails)
+  // without telling us. Since we have an infinite GOP length, this causes
+  // artifacts on screen that persist for a long time. It's easy to cause this
+  // condition by using NVDEC and delaying 100 ms randomly in the render path so
+  // the decoder runs out of output buffers.
+  av_context_->err_recognition = AV_EF_EXPLODE;
 
   // Function used by FFmpeg to get buffers to store decoded frames in.
-  av_context_->get_buffer2 = AVGetBuffer2;
+  //av_context_->get_buffer2 = AVGetBuffer2;
+
   // `get_buffer2` is called with the context, there `opaque` can be used to get
   // a pointer `this`.
   av_context_->opaque = this;
 
+/*
+  AVBufferRef* m_HwContext;
+  AVBufferRef* hw_frames_ctx = av_hwframe_ctx_alloc(codec_ctx->hw_device_ctx);
+  av_hwframe_ctx_init(hw_frames_ctx);
+  frame->hw_frames_ctx = av_buffer_ref(hw_frames_ctx);
+  av_buffer_unref(&hw_frames_ctx);*/
+  //todo(Haichao:Set to CUDA.)
+  av_context_->pix_fmt = AV_PIX_FMT_D3D11;
+  av_context_->get_format =
+      [](AVCodecContext * ctx,
+                 const enum AVPixelFormat* pix_fmts) -> enum AVPixelFormat {
+            while (*pix_fmts != AV_PIX_FMT_NONE){
+        if (*pix_fmts == AV_PIX_FMT_D3D11){return AV_PIX_FMT_D3D11;}
+                   pix_fmts++;
+                 }
+              fprintf(stderr, "Failed to get HW surface format.\n");
+             return AV_PIX_FMT_NONE;
+        };
+
+  //const AVCodec* codec = avcodec_find_decoder_by_name("h264_cuvid");
+  //const AVCodec* codec = avcodec_find_decoder_by_name("h264_d3d11va2");
   const AVCodec* codec = avcodec_find_decoder(av_context_->codec_id);
+        /* for (int i = 0;; i++) {
+    const AVCodecHWConfig* config =
+                       avcodec_get_hw_config(codec, i);
+    if (!config) {
+      // No remaing hwaccel options
+      break;
+    }
+
+    // Initialize the hardware codec and submit a test frame if the renderer
+    // needs it
+    for (int i = 1; i < 2; i++) {
+
+    }
+      //return true;
+    }
+  }*/
+ 
   if (!codec) {
-    // This is an indication that FFmpeg has not been initialized or it has not
-    // been compiled/initialized with the correct set of codecs.
-    RTC_LOG(LS_ERROR) << "FFmpeg H.264 decoder not found.";
-    Release();
-    ReportError();
-    return false;
+    // Not built with CUDA decoder
+    codec = avcodec_find_decoder(av_context_->codec_id);
+
+    if (!codec){
+      // This is an indication that FFmpeg has not been initialized or it has not
+      // been compiled/initialized with the correct set of codecs.
+      RTC_LOG(LS_ERROR) << "FFmpeg H.264 decoder not found.";
+      Release();
+      ReportError();
+      return false;
+    }
   }
+  /* //use cuda for linux
+  int err = av_hwdevice_ctx_create(&hw_device_ctx, AV_HWDEVICE_TYPE_CUDA, NULL,
+                                   NULL, 0);*/
+  //todo(haichao):should get available hws first.
+  m_HwDeviceContext = av_hwdevice_ctx_alloc(AV_HWDEVICE_TYPE_D3D11VA);
+  /* int err = av_hwdevice_ctx_create(&hw_device_ctx,
+                                        AV_HWDEVICE_TYPE_D3D11VA,
+                                   NULL,
+                                   NULL, 0);*/
+  AVHWDeviceContext* deviceContext =
+      (AVHWDeviceContext*)m_HwDeviceContext->data;
+  AVD3D11VADeviceContext* d3d11vaDeviceContext =
+      (AVD3D11VADeviceContext*)deviceContext->hwctx;
+  InitializeD3D11Device();
+  // AVHWDeviceContext takes ownership of these objects
+  d3d11vaDeviceContext->device = d3dDevice_;
+  d3d11vaDeviceContext->device_context = d3dDeviceContext_;
+
+  InitializeD3D11Texture(resolution.Width(), resolution.Height());
+
+  int err = av_hwdevice_ctx_init(m_HwDeviceContext);
+
+  m_HwFramesContext = av_hwframe_ctx_alloc(m_HwDeviceContext);
+  AVHWFramesContext* framesContext =
+      (AVHWFramesContext*)m_HwFramesContext->data;
+
+  // We require NV12 or P010 textures for our shader
+  //haichao:do not need this line
+  framesContext->format = AV_PIX_FMT_D3D11;
+  framesContext->sw_format = //(params->videoFormat & VIDEO_FORMAT_MASK_10BIT)
+                              //   ? AV_PIX_FMT_P010: 
+                             AV_PIX_FMT_NV12;
+  // We can have up to 16 reference frames plus a working surface?
+  framesContext->initial_pool_size = 17;
+  AVD3D11VAFramesContext* d3d11vaFramesContext =
+      (AVD3D11VAFramesContext*)framesContext->hwctx;
+
+  d3d11vaFramesContext->BindFlags = D3D11_BIND_DECODER;
+  //d3d11vaFramesContext->texture = d3dTexture_;
+  framesContext->width = resolution.Width();
+  framesContext->height = resolution.Height();
+  err = av_hwframe_ctx_init(m_HwFramesContext);
+  //prepareDecoderContext
+  if (err == 0) {
+    av_context_->hw_device_ctx = av_buffer_ref(m_HwDeviceContext);
+  }
+
   int res = avcodec_open2(av_context_.get(), codec, nullptr);
   if (res < 0) {
-    RTC_LOG(LS_ERROR) << "avcodec_open2 error: " << res;
-    Release();
-    ReportError();
-    return false;
+    // CUDA runtime not found on the machine
+    codec = avcodec_find_decoder(av_context_->codec_id);
+    res = avcodec_open2(av_context_.get(), codec, nullptr);
+    if (res < 0) {
+      RTC_LOG(LS_ERROR) << "avcodec_open2 error: " << res;
+      Release();
+      ReportError();
+      return false;
+    }
+    // Function used by FFmpeg to get buffers to store decoded frames in.
+    av_context_->get_buffer2 = AVGetBuffer2;
+  }else{
+    //is_hardware_accelerated = true;
+    //err = av_hwdevice_ctx_create(&m_HwContext, AV_HWDEVICE_TYPE_CUDA, nullptr, nullptr, 0);
+    av_context_->get_format = [](
+        AVCodecContext * ctx,
+               const enum AVPixelFormat* pix_fmts) -> enum AVPixelFormat {
+        const enum AVPixelFormat *p;
+      H264DecoderImpl* decoder = static_cast<H264DecoderImpl*>(ctx->opaque);
+
+        for (p = pix_fmts; *p != -1;p++){
+            //should be cuda -> software in linux
+          if (*pix_fmts == AV_PIX_FMT_D3D11){
+              ctx->hw_frames_ctx = av_buffer_ref(decoder->m_HwFramesContext);
+              return AV_PIX_FMT_D3D11;
+          }
+            RTC_LOG(LS_WARNING) << *pix_fmts;
+            pix_fmts++;
+        }
+        return AV_PIX_FMT_NONE;
+      };
   }
 
   av_frame_.reset(av_frame_alloc());
@@ -329,10 +582,53 @@ bool H264DecoderImpl::Configure(const Settings& settings) {
       return false;
     }
   }
+
+  AVPacket* packet = av_packet_alloc();
+  packet->data = (uint8_t*)k_H264TestFrame;
+  packet->size = sizeof(k_H264TestFrame);
+  // Some decoders won't output on the first frame, so we'll submit
+  // a few test frames if we get an EAGAIN error.
+  /*
+  for (int retries = 0; retries < 5; retries++) {
+    // Most FFmpeg decoders process input using a "push" model.
+    // We'll see those fail here if the format is not supported.
+    int err = avcodec_send_packet(av_context_.get(), packet);
+
+    // A few FFmpeg decoders (h264_mmal) process here using a "pull" model.
+    // Those decoders will fail here if the format is not supported.
+    err = avcodec_receive_frame(av_context_.get(), av_frame_.get());
+    if (err == AVERROR(EAGAIN)) {
+      // Wait a little while to let the hardware work
+      Sleep(100);
+    } else {
+      // Done!
+      break;
+    }
+  }*/
+  av_packet_free(&packet);
+
   return true;
 }
 
 int32_t H264DecoderImpl::Release() {
+  if (d3dDevice_){
+    d3dDevice_->Release();
+  }
+  if (d3dDeviceContext_){
+    d3dDeviceContext_->Release();
+  }
+  if (d3dTexture_){
+    d3dTexture_->Release();
+  }
+
+  if (m_HwFramesContext != nullptr) {
+    av_buffer_unref(&m_HwFramesContext);
+  }
+
+  if (m_HwDeviceContext != nullptr) {
+    // This will release m_Device and m_DeviceContext too
+    av_buffer_unref(&m_HwDeviceContext);
+  }
   av_context_.reset();
   av_frame_.reset();
   return WEBRTC_VIDEO_CODEC_OK;
@@ -388,6 +684,7 @@ int32_t H264DecoderImpl::Decode(const EncodedImage& input_image,
     return WEBRTC_VIDEO_CODEC_ERROR;
   }
 
+  //maybe we need to split it into a thread and handle AVERROR(EAGAIN)
   result = avcodec_receive_frame(av_context_.get(), av_frame_.get());
   if (result < 0) {
     RTC_LOG(LS_ERROR) << "avcodec_receive_frame error: " << result;
@@ -400,8 +697,89 @@ int32_t H264DecoderImpl::Decode(const EncodedImage& input_image,
   RTC_DCHECK_EQ(av_frame_->reordered_opaque, frame_timestamp_us);
 
   // TODO(sakal): Maybe it is possible to get QP directly from FFmpeg.
+  // Haichao:Does this influence performance?
   h264_bitstream_parser_.ParseBitstream(input_image);
   absl::optional<int> qp = h264_bitstream_parser_.GetLastSliceQp();
+
+  if (av_context_->pix_fmt == AV_PIX_FMT_D3D11) {
+    if (av_frame_->width!=texture_width || av_frame_->height != texture_height){
+      texture_width = av_frame_->width;
+      texture_height = av_frame_->height;
+      int hr = InitializeD3D11Texture(texture_width, texture_height);
+      if (hr!=0){
+        return WEBRTC_VIDEO_CODEC_ERROR;
+      }
+    }
+    // Pass on color space from input frame if explicitly specified.
+    const ColorSpace& color_space =
+      input_image.ColorSpace() ? *input_image.ColorSpace()
+                               : ExtractH264ColorSpace(av_context_.get());
+
+    /*auto cudabuffer = reinterpret_cast<CUdeviceptr>(Frame->m_buffer);
+    if (!cudabuffer)
+      return result;*/
+    ID3D11Texture2D* texture = (ID3D11Texture2D*)av_frame_->data[0];
+    //ID3D11DeviceContext* context = (ID3D11DeviceContext*)av_frame_->data[1];
+    //d3dDeviceContext_->CopyResource(d3dTexture_, texture);
+    //  DXGI_FORMAT_R8_UNORM for NV12 luminance channel
+
+    /* it is too hard for me to convert it to RGBA.
+    D3D11_SHADER_RESOURCE_VIEW_DESC luminance_desc =
+        CD3D11_SHADER_RESOURCE_VIEW_DESC(
+            d3dTexture_, D3D11_SRV_DIMENSION_TEXTURE2D, DXGI_FORMAT_R8_UNORM);
+    m_device->CreateShaderResourceView(d3dTexture_, &luminance_desc,
+                                       &m_luminance_shader_resource_view);
+
+    // DXGI_FORMAT_R8G8_UNORM for NV12 chrominance channel
+    D3D11_SHADER_RESOURCE_VIEW_DESC chrominance_desc =
+        CD3D11_SHADER_RESOURCE_VIEW_DESC(
+            d3dTexture_, D3D11_SRV_DIMENSION_TEXTURE2D,
+                                         DXGI_FORMAT_R8G8_UNORM);
+
+    m_device->CreateShaderResourceView(m_texture, &chrominance_desc,
+                                       &m_chrominance_shader_resource_view);
+
+    m_device_context->PSSetShaderResources(
+        0, 1, m_luminance_shader_resource_view.GetAddressOf());
+
+    m_device_context->PSSetShaderResources(
+        1, 1, m_chrominance_shader_resource_view.GetAddressOf());
+
+    ComPtr<IDXGIResource> dxgi_resource;
+    m_texture->QueryInterface(
+        __uuidof(IDXGIResource),
+        reinterpret_cast<void**>(dxgi_resource.GetAddressOf()));
+
+    dxgi_resource->GetSharedHandle(&m_shared_handle);
+
+    m_device->OpenSharedResource(
+        m_shared_handle, __uuidof(ID3D11Texture2D),
+        reinterpret_cast<void**>(m_texture.GetAddressOf()));
+
+    ComPtr<ID3D11Texture2D> new_texture = (ID3D11Texture2D*)frame->data[0];
+    const int texture_index = frame->data[1];
+    m_device_context->CopySubresourceRegion(
+        m_texture.Get(), 0, 0, 0, 0, new_texture.Get(), texture_index, nullptr);
+*/
+    rtc::scoped_refptr<NativeHandleBuffer> buffer = rtc::make_ref_counted<NativeHandleBuffer>((void*)texture, texture_width,
+    texture_height);
+
+    VideoFrame decoded_frame = VideoFrame::Builder()
+                    .set_video_frame_buffer(buffer)
+                    .set_timestamp_rtp(input_image.Timestamp())
+                    .set_color_space(color_space)
+                    .build();
+
+  // Return decoded frame.
+  // TODO(nisse): Timestamp and rotation are all zero here. Change decoder
+  // interface to pass a VideoFrameBuffer instead of a VideoFrame?
+  decoded_image_callback_->Decoded(decoded_frame, absl::nullopt, qp);
+
+  // Stop referencing it, possibly freeing `input_frame`.
+  av_frame_unref(av_frame_.get());
+
+  return WEBRTC_VIDEO_CODEC_OK;
+  }
 
   // Obtain the `video_frame` containing the decoded image.
   VideoFrame* input_frame =

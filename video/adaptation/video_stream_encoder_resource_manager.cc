@@ -645,8 +645,8 @@ void VideoStreamEncoderResourceManager::ConfigureBandwidthQualityScaler(
   const bool bandwidth_quality_scaling_allowed =
       IsResolutionScalingEnabled(degradation_preference_) &&
       (encoder_settings_.has_value() &&
-       encoder_settings_->encoder_config().is_quality_scaling_allowed) &&
-      !encoder_info.is_qp_trusted.value_or(true);
+       encoder_settings_->encoder_config().is_quality_scaling_allowed);
+        //&&!encoder_info.is_qp_trusted.value_or(true);
 
   UpdateBandwidthQualityScalerSettings(bandwidth_quality_scaling_allowed,
                                        encoder_info.resolution_bitrate_limits);

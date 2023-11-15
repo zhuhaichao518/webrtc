@@ -37,7 +37,7 @@ namespace {
 // DxgiDuplicatorController leverages external components to do the capture
 // scheduling. So here DxgiOutputDuplicator does not need to actively wait for a
 // new frame.
-//const int kAcquireTimeoutMs = 0;
+const int kAcquireTimeoutMs = 0;
 
 DesktopRect RECTToDesktopRect(const RECT& rect) {
   return DesktopRect::MakeLTRB(rect.left, rect.top, rect.right, rect.bottom);
@@ -191,7 +191,7 @@ bool DxgiOutputDuplicator::Duplicate(Context* context,
   memset(&frame_info, 0, sizeof(frame_info));
   ComPtr<IDXGIResource> resource;
   _com_error error = duplication_->AcquireNextFrame(
-      1000, &frame_info, resource.GetAddressOf());
+      kAcquireTimeoutMs, &frame_info, resource.GetAddressOf());
   if (error.Error() != S_OK && error.Error() != DXGI_ERROR_WAIT_TIMEOUT) {
     RTC_LOG(LS_ERROR) << "Failed to capture frame: "
                       << desktop_capture::utils::ComErrorToString(error);
