@@ -1,3 +1,5 @@
+This code base aims at adding hardware-accelerated codec to WebRTC.
+
 # WebRTC-SDK
 
 This repository contains a fork of WebRTC from Google with various improvements.
