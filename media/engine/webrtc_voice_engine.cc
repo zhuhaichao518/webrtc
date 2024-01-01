@@ -469,7 +469,8 @@ void WebRtcVoiceEngine::ApplyOptions(const AudioOptions& options_in) {
     }
   }
 #endif
-
+  //CloudPlayPlus:remove using of built in EC.
+  /*
   if (options.echo_cancellation) {
     // Check if platform supports built-in EC. Currently only supported on
     // Android and in combination with Java based audio layer.
@@ -489,7 +490,7 @@ void WebRtcVoiceEngine::ApplyOptions(const AudioOptions& options_in) {
             << "Disabling EC since built-in EC will be used instead";
       }
     }
-  }
+  }*/
 
   if (options.auto_gain_control) {
     bool built_in_agc_avaliable = adm()->BuiltInAGCIsAvailable();

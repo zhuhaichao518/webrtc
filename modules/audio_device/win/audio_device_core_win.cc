@@ -740,9 +740,16 @@ int32_t AudioDeviceWindowsCore::InitMicrophoneLocked() {
     return -1;
   }
 
+  bool capture_system = false;
+
   if (_usingInputDeviceIndex) {
     int16_t nDevices = RecordingDevicesLocked();
-    if (_inputDeviceIndex > (nDevices - 1)) {
+
+    if (nDevices == _inputDeviceIndex) {
+      capture_system = true;
+    }
+
+    if (_inputDeviceIndex > (nDevices)) {
       RTC_LOG(LS_ERROR) << "current device selection is invalid => unable to"
                            " initialize";
       return -1;
@@ -754,7 +761,11 @@ int32_t AudioDeviceWindowsCore::InitMicrophoneLocked() {
   SAFE_RELEASE(_ptrDeviceIn);
   if (_usingInputDeviceIndex) {
     // Refresh the selected capture endpoint device using current index
-    ret = _GetListDevice(eCapture, _inputDeviceIndex, &_ptrDeviceIn);
+    if (capture_system) {
+      ret = _GetDefaultDevice(eRender, eConsole, &_ptrDeviceIn);   
+    } else {
+      ret = _GetListDevice(eCapture, _inputDeviceIndex, &_ptrDeviceIn);   
+    }
   } else {
     ERole role;
     (_inputDevice == AudioDeviceModule::kDefaultDevice)
@@ -1681,7 +1692,13 @@ int32_t AudioDeviceWindowsCore::SetRecordingDevice(uint16_t index) {
   // capture collection.
   UINT nDevices = RecordingDevices();
 
-  if (index < 0 || index > (nDevices - 1)) {
+  bool capture_system = false;
+  // (CloudPlayPlus):Preserved value for system audio.
+  if (index == nDevices) {
+    capture_system = true;
+  }
+
+  if (index < 0 || index > (nDevices)) {
     RTC_LOG(LS_ERROR) << "device index is out of range [0," << (nDevices - 1)
                       << "]";
     return -1;
@@ -1693,13 +1710,22 @@ int32_t AudioDeviceWindowsCore::SetRecordingDevice(uint16_t index) {
 
   RTC_DCHECK(_ptrCaptureCollection);
 
-  // Select an endpoint capture device given the specified index
-  SAFE_RELEASE(_ptrDeviceIn);
-  hr = _ptrCaptureCollection->Item(index, &_ptrDeviceIn);
-  if (FAILED(hr)) {
-    _TraceCOMError(hr);
+  if (!capture_system) {
+    // Select an endpoint capture device given the specified index
     SAFE_RELEASE(_ptrDeviceIn);
-    return -1;
+    hr = _ptrCaptureCollection->Item(index, &_ptrDeviceIn);
+    if (FAILED(hr)) {
+      _TraceCOMError(hr);
+      SAFE_RELEASE(_ptrDeviceIn);
+      return -1;
+    }
+  } else {
+    SAFE_RELEASE(_ptrDeviceIn);
+    hr = _GetDefaultDevice(eRender, eConsole, &_ptrDeviceIn);  
+    if (FAILED(hr)) {
+      SAFE_RELEASE(_ptrDeviceIn);
+      return -1;
+    }
   }
 
   WCHAR szDeviceName[MAX_PATH];
@@ -2266,11 +2292,12 @@ int32_t AudioDeviceWindowsCore::InitRecording() {
   }
 
   // Create a capturing stream.
+  // (todo:haichao):should use AUDCLNT_STREAMFLAGS_LOOPBACK only when want to render system audio
   hr = _ptrClientIn->Initialize(
       AUDCLNT_SHAREMODE_SHARED,  // share Audio Engine with other applications
       AUDCLNT_STREAMFLAGS_EVENTCALLBACK |  // processing of the audio buffer by
                                            // the client will be event driven
-          AUDCLNT_STREAMFLAGS_NOPERSIST,   // volume and mute settings for an
+          AUDCLNT_STREAMFLAGS_LOOPBACK,    // volume and mute settings for an
                                            // audio session will not persist
                                            // across system restarts
       0,                    // required for event-driven shared mode
