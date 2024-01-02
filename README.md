@@ -2,7 +2,7 @@ This code base aims at adding more support to to WebRTC.
 It is forked from libwebrtc, with sample commits to implement:
 - hardware-acceleration
 - system audio capture
-
+The code only shows the concept and "just work" on windows, I do not have enough time to refactor it. :)
 
 The following is readme.md from libwebrtc:
 # WebRTC-SDK
