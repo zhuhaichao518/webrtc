@@ -1,5 +1,10 @@
-This code base aims at adding hardware-accelerated codec to WebRTC.
+This code base aims at adding more support to to WebRTC.
+It is forked from libwebrtc, with sample commits to implement:
+- hardware-acceleration
+- system audio capture
 
+
+The following is readme.md from libwebrtc:
 # WebRTC-SDK
 
 This repository contains a fork of WebRTC from Google with various improvements.
