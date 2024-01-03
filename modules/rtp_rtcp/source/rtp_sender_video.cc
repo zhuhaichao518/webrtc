@@ -654,6 +654,7 @@ bool RTPSenderVideo::SendVideo(
       additional_data = RtpDescriptorAuthentication(video_header);
     }
 
+    //Haichao: do we need to encrypt?
     if (frame_encryptor_->Encrypt(
             cricket::MEDIA_TYPE_VIDEO, first_packet->Ssrc(), additional_data,
             payload, encrypted_video_payload, &bytes_written) != 0) {

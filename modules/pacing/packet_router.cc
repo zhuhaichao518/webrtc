@@ -23,6 +23,7 @@
 #include "rtc_base/checks.h"
 #include "rtc_base/logging.h"
 #include "rtc_base/system/unused.h"
+//#include "rtc_base/time_utils.h"
 #include "rtc_base/trace_event.h"
 
 namespace webrtc {
@@ -162,10 +163,12 @@ void PacketRouter::SendPacket(std::unique_ptr<RtpPacketToSend> packet,
   }
 
   RtpRtcpInterface* rtp_module = it->second;
+  //RTC_LOG(LS_WARNING) << "start try send packet" << rtc::TimeNanos();
   if (!rtp_module->TrySendPacket(packet.get(), cluster_info)) {
     RTC_LOG(LS_WARNING) << "Failed to send packet, rejected by RTP module.";
     return;
   }
+  //RTC_LOG(LS_WARNING) << "end try send packet" << rtc::TimeNanos();
 
   // Sending succeeded.
 

@@ -470,6 +470,7 @@ void WebRtcVoiceEngine::ApplyOptions(const AudioOptions& options_in) {
   }
 #endif
   //CloudPlayPlus:remove using of built in EC.
+  //todo(haichao): enable echo_cancellation in suitable scenarios.
   /*
   if (options.echo_cancellation) {
     // Check if platform supports built-in EC. Currently only supported on

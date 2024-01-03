@@ -16,6 +16,7 @@
 
 namespace webrtc {
 namespace {
+//haichao:?
 constexpr int64_t kWindowMs = 500;
 }
 

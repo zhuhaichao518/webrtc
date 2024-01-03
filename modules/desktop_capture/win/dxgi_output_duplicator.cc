@@ -37,7 +37,7 @@ namespace {
 // DxgiDuplicatorController leverages external components to do the capture
 // scheduling. So here DxgiOutputDuplicator does not need to actively wait for a
 // new frame.
-const int kAcquireTimeoutMs = 0;
+const int kAcquireTimeoutMs = 20;
 
 DesktopRect RECTToDesktopRect(const RECT& rect) {
   return DesktopRect::MakeLTRB(rect.left, rect.top, rect.right, rect.bottom);

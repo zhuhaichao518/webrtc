@@ -19,6 +19,8 @@
 #include "rtc_base/experiments/field_trial_parser.h"
 #include "rtc_base/experiments/field_trial_units.h"
 #include "rtc_base/trace_event.h"
+#include "rtc_base/logging.h"
+#include "rtc_base/time_utils.h"
 
 namespace webrtc {
 
@@ -112,6 +114,7 @@ void TaskQueuePacedSender::SetPacingRates(DataRate pacing_rate,
 
 void TaskQueuePacedSender::EnqueuePackets(
     std::vector<std::unique_ptr<RtpPacketToSend>> packets) {
+      //RTC_LOG(LS_INFO) << "TaskQueuePacedSender::EnqueuePacket:" << rtc::TimeNanos();
   task_queue_->PostTask(
       SafeTask(safety_.flag(), [this, packets = std::move(packets)]() mutable {
         RTC_DCHECK_RUN_ON(task_queue_);
@@ -129,6 +132,7 @@ void TaskQueuePacedSender::EnqueuePackets(
           }
           packet_size_.Apply(1, packet_size);
           RTC_DCHECK_GE(packet->capture_time(), Timestamp::Zero());
+          //RTC_LOG(LS_INFO) << "TaskQueuePacedSender::realenqueue:" << rtc::TimeNanos();
           pacing_controller_.EnqueuePacket(std::move(packet));
         }
         MaybeProcessPackets(Timestamp::MinusInfinity());
@@ -202,6 +206,7 @@ void TaskQueuePacedSender::OnStatsUpdated(const Stats& stats) {
 
 void TaskQueuePacedSender::MaybeProcessPackets(
     Timestamp scheduled_process_time) {
+
   RTC_DCHECK_RUN_ON(task_queue_);
 
   TRACE_EVENT0(TRACE_DISABLED_BY_DEFAULT("webrtc"),
@@ -259,7 +264,7 @@ void TaskQueuePacedSender::MaybeProcessPackets(
   // Calculate next process time.
   TimeDelta time_to_next_process =
       std::max(hold_back_window, next_send_time - now - early_execute_margin);
-  next_send_time = now + time_to_next_process;
+  next_send_time = now + TimeDelta::Millis(1);//time_to_next_process;
 
   // If no in flight task or in flight task is later than `next_send_time`,
   // schedule a new one. Previous in flight task will be retired.

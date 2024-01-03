@@ -967,6 +967,7 @@ bool WebRtcVideoChannel::ApplyChangedParams(
       // the codec max bitrate.
       // TODO(pbos): This should be reconsidered (codec max bitrate should
       // probably not affect global call max bitrate).
+      //bitrate_config_.max_bitrate_bps = 4096000;
       bitrate_config_.max_bitrate_bps = -1;
     }
 
@@ -977,6 +978,7 @@ bool WebRtcVideoChannel::ApplyChangedParams(
       if (!changed_params.send_codec) {
         // If the codec isn't changing, set the start bitrate to -1 which means
         // "unchanged" so that BWE isn't affected.
+        //bitrate_config_.start_bitrate_bps = 4096000;
         bitrate_config_.start_bitrate_bps = -1;
       }
     }
@@ -1404,7 +1406,7 @@ bool WebRtcVideoChannel::AddSendStream(const StreamParams& sp) {
 
   WebRtcVideoSendStream* stream = new WebRtcVideoSendStream(
       call_, sp, std::move(config), default_send_options_,
-      video_config_.enable_cpu_adaptation, bitrate_config_.max_bitrate_bps,
+      false, bitrate_config_.max_bitrate_bps,
       send_codec_, send_rtp_extensions_, send_params_);
 
   uint32_t ssrc = sp.first_ssrc();
@@ -2546,6 +2548,8 @@ WebRtcVideoChannel::WebRtcVideoSendStream::CreateVideoEncoderConfig(
   // (m-section) level with the attribute "b=AS." Note that we override this
   // value below if the RtpParameters max bitrate set with
   // RtpSender::SetParameters has a lower value.
+  // Todo:(haichao) for some reason, https://webrtc.github.io/samples/src/content/peerconnection/bandwidth/
+  // does not work. Figure it out.
   int stream_max_bitrate = parameters_.max_bitrate_bps;
   // When simulcast is enabled (when there are multiple encodings),
   // encodings[i].max_bitrate_bps will be enforced by
@@ -2554,9 +2558,12 @@ WebRtcVideoChannel::WebRtcVideoSendStream::CreateVideoEncoderConfig(
   // (one coming from SDP, the other coming from RtpParameters).
   if (rtp_parameters_.encodings[0].max_bitrate_bps &&
       rtp_parameters_.encodings.size() == 1) {
-    stream_max_bitrate =
+            stream_max_bitrate =
         MinPositive(*(rtp_parameters_.encodings[0].max_bitrate_bps),
-                    parameters_.max_bitrate_bps);
+                   parameters_.max_bitrate_bps);
+    //stream_max_bitrate = 4096000;
+        //MinPositive(*(rtp_parameters_.encodings[0].max_bitrate_bps),
+        //            parameters_.max_bitrate_bps);
   }
 
   // The codec max bitrate comes from the "x-google-max-bitrate" parameter
@@ -3335,7 +3342,7 @@ WebRtcVideoChannel::WebRtcVideoReceiveStream::GetVideoReceiverInfo(
       stats.rtp_stats.packet_counter.padding_bytes;
   info.packets_received = stats.rtp_stats.packet_counter.packets;
   info.packets_lost = stats.rtp_stats.packets_lost;
-  info.jitter_ms = stats.rtp_stats.jitter / (kVideoCodecClockrate / 1000);
+  info.jitter_ms = 0;//stats.rtp_stats.jitter / (kVideoCodecClockrate / 1000);
 
   info.framerate_received = stats.network_frame_rate;
   info.framerate_decoded = stats.decode_frame_rate;
@@ -3352,11 +3359,11 @@ WebRtcVideoChannel::WebRtcVideoReceiveStream::GetVideoReceiverInfo(
   info.max_decode_ms = stats.max_decode_ms;
   info.current_delay_ms = stats.current_delay_ms;
   info.target_delay_ms = stats.target_delay_ms;
-  info.jitter_buffer_ms = stats.jitter_buffer_ms;
-  info.jitter_buffer_delay_seconds = stats.jitter_buffer_delay_seconds;
-  info.jitter_buffer_emitted_count = stats.jitter_buffer_emitted_count;
-  info.min_playout_delay_ms = stats.min_playout_delay_ms;
-  info.render_delay_ms = stats.render_delay_ms;
+  info.jitter_buffer_ms = 0;//stats.jitter_buffer_ms;
+  info.jitter_buffer_delay_seconds = 0;//stats.jitter_buffer_delay_seconds;
+  info.jitter_buffer_emitted_count = 0;//stats.jitter_buffer_emitted_count;
+  info.min_playout_delay_ms = 0;//stats.min_playout_delay_ms;
+  info.render_delay_ms = 0;//stats.render_delay_ms;
   info.frames_received =
       stats.frame_counts.key_frames + stats.frame_counts.delta_frames;
   info.frames_dropped = stats.frames_dropped;

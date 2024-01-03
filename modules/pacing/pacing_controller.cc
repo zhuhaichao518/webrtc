@@ -51,7 +51,7 @@ const TimeDelta PacingController::kMaxPaddingReplayDuration =
     TimeDelta::Millis(50);
 const TimeDelta PacingController::kMaxEarlyProbeProcessing =
     TimeDelta::Millis(1);
-
+//
 PacingController::PacingController(Clock* clock,
                                    PacketSender* packet_sender,
                                    const FieldTrialsView& field_trials)
@@ -186,9 +186,14 @@ void PacingController::SetPacingRates(DataRate pacing_rate,
 }
 
 void PacingController::EnqueuePacket(std::unique_ptr<RtpPacketToSend> packet) {
+  //packet_sender_->SendPacket(std::move(packet), PacedPacketInfo());
+  //max_hold_back_window_in_packets_ = 1;
+  //RTC_LOG(LS_INFO) << "EnqueuePacket:" << rtc::TimeNanos();
+  
   RTC_DCHECK(pacing_rate_ > DataRate::Zero())
       << "SetPacingRate must be called before InsertPacket.";
   RTC_CHECK(packet->packet_type());
+  //packet_sender_->SendPacket(std::move(rtp_packet), pacing_info);
 
   if (keyframe_flushing_ &&
       packet->packet_type() == RtpPacketMediaType::kVideo &&
@@ -376,7 +381,7 @@ Timestamp PacingController::NextSendTime() const {
 void PacingController::ProcessPackets() {
   const Timestamp now = CurrentTime();
   Timestamp target_send_time = now;
-
+  //RTC_LOG(LS_INFO) << "ProcessPackets:" << rtc::TimeNanos();
   if (ShouldSendKeepalive(now)) {
     DataSize keepalive_data_sent = DataSize::Zero();
     // We can not send padding unless a normal packet has first been sent. If
@@ -387,6 +392,7 @@ void PacingController::ProcessPackets() {
       for (auto& packet : keepalive_packets) {
         keepalive_data_sent +=
             DataSize::Bytes(packet->payload_size() + packet->padding_size());
+        //RTC_LOG(LS_INFO) << "ProcessPackets(inner):" << rtc::TimeNanos();
         packet_sender_->SendPacket(std::move(packet), PacedPacketInfo());
         for (auto& packet : packet_sender_->FetchFec()) {
           EnqueuePacket(std::move(packet));
@@ -482,7 +488,7 @@ void PacingController::ProcessPackets() {
         packet_size += DataSize::Bytes(rtp_packet->headers_size()) +
                        transport_overhead_per_packet_;
       }
-
+      //RTC_LOG(LS_INFO) << "SendingPackets(inner):" << rtc::TimeNanos();
       packet_sender_->SendPacket(std::move(rtp_packet), pacing_info);
       for (auto& packet : packet_sender_->FetchFec()) {
         EnqueuePacket(std::move(packet));

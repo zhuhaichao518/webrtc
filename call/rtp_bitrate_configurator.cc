@@ -52,10 +52,6 @@ BitrateConstraints RtpBitrateConfigurator::GetConfig() const {
 absl::optional<BitrateConstraints>
 RtpBitrateConfigurator::UpdateWithSdpParameters(
     const BitrateConstraints& bitrate_config) {
-
-     BitrateConstraints& non_const_bitrate_config =
-      const_cast<BitrateConstraints&>(bitrate_config);
-
   RTC_DCHECK_GE(bitrate_config.min_bitrate_bps, 0);
   RTC_DCHECK_NE(bitrate_config.start_bitrate_bps, 0);
   if (bitrate_config.max_bitrate_bps != -1) {
@@ -67,9 +63,6 @@ RtpBitrateConfigurator::UpdateWithSdpParameters(
   // value. In practice, this value comes from the x-google-start-bitrate codec
   // parameter in SDP, and setting the same remote description twice shouldn't
   // restart bandwidth estimation.
-  non_const_bitrate_config.start_bitrate_bps = 2000000;
-  non_const_bitrate_config.min_bitrate_bps = 2000000;
-  non_const_bitrate_config.max_bitrate_bps = 3000000;
   if (bitrate_config.start_bitrate_bps != -1 &&
       bitrate_config.start_bitrate_bps !=
           base_bitrate_config_.start_bitrate_bps) {

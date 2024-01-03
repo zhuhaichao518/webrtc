@@ -21,8 +21,6 @@
 #error "See: bugs.webrtc.org/9213#c13."
 #endif
 
-#include <d3d11.h>
-#include <dxgi1_5.h>
 #include <memory>
 
 #include "modules/video_coding/codecs/h264/include/h264.h"
@@ -91,25 +89,10 @@ class H264DecoderImpl : public H264Decoder {
   void ReportInit();
   void ReportError();
 
-  int InitializeD3D11Device();
-  int InitializeD3D11Texture(int width, int height);
-
   // Used by ffmpeg via `AVGetBuffer2()` to allocate I420 images.
   VideoFrameBufferPool ffmpeg_buffer_pool_;
   std::unique_ptr<AVCodecContext, AVCodecContextDeleter> av_context_;
   std::unique_ptr<AVFrame, AVFrameDeleter> av_frame_;
-
-  //Haichao: do we actually need this?
-  //AVBufferRef* m_HwContext;
-  AVBufferRef* m_HwDeviceContext = nullptr;
-  AVBufferRef* m_HwFramesContext = nullptr;
-
-  //Used when hardware_accelerated.
-  int texture_width, texture_height;
-  //IDXGIFactory5* m_Factory;
-  ID3D11Device* d3dDevice_ = nullptr;
-  ID3D11DeviceContext* d3dDeviceContext_ = nullptr;
-  ID3D11Texture2D* d3dTexture_ = nullptr;
 
   DecodedImageCallback* decoded_image_callback_;
 
