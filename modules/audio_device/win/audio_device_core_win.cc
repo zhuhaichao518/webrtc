@@ -392,6 +392,7 @@ AudioDeviceWindowsCore::AudioDeviceWindowsCore()
       _playIsInitialized(false),
       _speakerIsInitialized(false),
       _microphoneIsInitialized(false),
+      _captureSystem(false),
       _usingInputDeviceIndex(false),
       _usingOutputDeviceIndex(false),
       _inputDevice(AudioDeviceModule::kDefaultCommunicationDevice),
@@ -740,13 +741,13 @@ int32_t AudioDeviceWindowsCore::InitMicrophoneLocked() {
     return -1;
   }
 
-  bool capture_system = false;
+  _captureSystem = false;
 
   if (_usingInputDeviceIndex) {
     int16_t nDevices = RecordingDevicesLocked();
 
     if (nDevices == _inputDeviceIndex) {
-      capture_system = true;
+      _captureSystem = true;
     }
 
     if (_inputDeviceIndex > (nDevices)) {
@@ -761,7 +762,7 @@ int32_t AudioDeviceWindowsCore::InitMicrophoneLocked() {
   SAFE_RELEASE(_ptrDeviceIn);
   if (_usingInputDeviceIndex) {
     // Refresh the selected capture endpoint device using current index
-    if (capture_system) {
+    if (_captureSystem) {
       ret = _GetDefaultDevice(eRender, eConsole, &_ptrDeviceIn);   
     } else {
       ret = _GetListDevice(eCapture, _inputDeviceIndex, &_ptrDeviceIn);   
@@ -1692,10 +1693,9 @@ int32_t AudioDeviceWindowsCore::SetRecordingDevice(uint16_t index) {
   // capture collection.
   UINT nDevices = RecordingDevices();
 
-  bool capture_system = false;
   // (CloudPlayPlus):Preserved value for system audio.
   if (index == nDevices) {
-    capture_system = true;
+    _captureSystem = true;
   }
 
   if (index < 0 || index > (nDevices)) {
@@ -1710,7 +1710,7 @@ int32_t AudioDeviceWindowsCore::SetRecordingDevice(uint16_t index) {
 
   RTC_DCHECK(_ptrCaptureCollection);
 
-  if (!capture_system) {
+  if (!_captureSystem) {
     // Select an endpoint capture device given the specified index
     SAFE_RELEASE(_ptrDeviceIn);
     hr = _ptrCaptureCollection->Item(index, &_ptrDeviceIn);
@@ -2293,18 +2293,31 @@ int32_t AudioDeviceWindowsCore::InitRecording() {
 
   // Create a capturing stream.
   // (todo:haichao):should use AUDCLNT_STREAMFLAGS_LOOPBACK only when want to render system audio
-  hr = _ptrClientIn->Initialize(
-      AUDCLNT_SHAREMODE_SHARED,  // share Audio Engine with other applications
-      AUDCLNT_STREAMFLAGS_EVENTCALLBACK |  // processing of the audio buffer by
-                                           // the client will be event driven
-          AUDCLNT_STREAMFLAGS_LOOPBACK,    // volume and mute settings for an
-                                           // audio session will not persist
-                                           // across system restarts
-      0,                    // required for event-driven shared mode
-      0,                    // periodicity
-      (WAVEFORMATEX*)&Wfx,  // selected wave format
-      NULL);                // session GUID
-
+  if (_captureSystem){
+    hr = _ptrClientIn->Initialize(
+        AUDCLNT_SHAREMODE_SHARED,  // share Audio Engine with other applications
+        AUDCLNT_STREAMFLAGS_EVENTCALLBACK |  // processing of the audio buffer by
+                                            // the client will be event driven
+            AUDCLNT_STREAMFLAGS_LOOPBACK,    // volume and mute settings for an
+                                            // audio session will not persist
+                                            // across system restarts
+        0,                    // required for event-driven shared mode
+        0,                    // periodicity
+        (WAVEFORMATEX*)&Wfx,  // selected wave format
+        NULL);                // session GUID
+  }else{
+    hr = _ptrClientIn->Initialize(
+        AUDCLNT_SHAREMODE_SHARED,  // share Audio Engine with other applications
+        AUDCLNT_STREAMFLAGS_EVENTCALLBACK |  // processing of the audio buffer by
+                                            // the client will be event driven
+            AUDCLNT_STREAMFLAGS_NOPERSIST,    // volume and mute settings for an
+                                            // audio session will not persist
+                                            // across system restarts
+        0,                    // required for event-driven shared mode
+        0,                    // periodicity
+        (WAVEFORMATEX*)&Wfx,  // selected wave format
+        NULL);                // session GUID
+  }
   if (hr != S_OK) {
     RTC_LOG(LS_ERROR) << "IAudioClient::Initialize() failed:";
   }

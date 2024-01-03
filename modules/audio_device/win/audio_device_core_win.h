@@ -316,6 +316,7 @@ class AudioDeviceWindowsCore : public AudioDeviceGeneric {
   bool _playIsInitialized;
   bool _speakerIsInitialized;
   bool _microphoneIsInitialized;
+  bool _captureSystem;
 
   bool _usingInputDeviceIndex;
   bool _usingOutputDeviceIndex;
