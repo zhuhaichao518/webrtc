@@ -163,7 +163,7 @@ DesktopAndCursorComposer::DesktopAndCursorComposer(
     std::unique_ptr<DesktopCapturer> desktop_capturer,
     const DesktopCaptureOptions& options)
     : DesktopAndCursorComposer(desktop_capturer.release(),
-                               MouseCursorMonitor::Create(options).release()) {}
+                               options.prefer_cursor_embedded() ? MouseCursorMonitor::Create(options).release(): nullptr) {}
 
 DesktopAndCursorComposer::DesktopAndCursorComposer(
     DesktopCapturer* desktop_capturer,
