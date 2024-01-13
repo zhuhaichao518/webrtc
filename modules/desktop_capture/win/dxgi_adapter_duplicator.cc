@@ -44,7 +44,69 @@ bool DxgiAdapterDuplicator::Initialize() {
   return false;
 }
 
+typedef enum _D3DKMT_SCHEDULINGPRIORITYCLASS {
+  D3DKMT_SCHEDULINGPRIORITYCLASS_IDLE,
+  D3DKMT_SCHEDULINGPRIORITYCLASS_BELOW_NORMAL,
+  D3DKMT_SCHEDULINGPRIORITYCLASS_NORMAL,
+  D3DKMT_SCHEDULINGPRIORITYCLASS_ABOVE_NORMAL,
+  D3DKMT_SCHEDULINGPRIORITYCLASS_HIGH,
+  D3DKMT_SCHEDULINGPRIORITYCLASS_REALTIME
+} D3DKMT_SCHEDULINGPRIORITYCLASS;
+
+typedef LSTATUS WINAPI (*PD3DKMTSetProcessSchedulingPriorityClass)(HANDLE, D3DKMT_SCHEDULINGPRIORITYCLASS);
+
 bool DxgiAdapterDuplicator::DoInitialize() {
+  {
+    const DWORD flags = TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY;
+    TOKEN_PRIVILEGES tp;
+    HANDLE token;
+    LUID val;
+
+    if(OpenProcessToken(GetCurrentProcess(), flags, &token) &&
+       !!LookupPrivilegeValue(NULL, SE_INC_BASE_PRIORITY_NAME, &val)) {
+      tp.PrivilegeCount           = 1;
+      tp.Privileges[0].Luid       = val;
+      tp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+
+      if(!AdjustTokenPrivileges(token, false, &tp, sizeof(tp), NULL, NULL)) {
+      RTC_LOG(LS_WARNING) << "Haichao::Could not set privilege to increase GPU priority";
+      }
+    }
+
+    CloseHandle(token);
+
+    HMODULE gdi32 = GetModuleHandleA("GDI32");
+    if(gdi32) {
+      PD3DKMTSetProcessSchedulingPriorityClass fn =
+        (PD3DKMTSetProcessSchedulingPriorityClass)GetProcAddress(gdi32, "D3DKMTSetProcessSchedulingPriorityClass");
+      if(fn) {
+        HRESULT status = fn(GetCurrentProcess(), D3DKMT_SCHEDULINGPRIORITYCLASS_REALTIME);
+        if(FAILED(status)) {
+          RTC_LOG(LS_WARNING) << "Failed to set realtime GPU priority. Please run application as administrator for optimal performance.";
+        }
+      }
+    }
+
+    IDXGIDevice* dxgi = device_.dxgi_device();
+
+    dxgi->SetGPUThreadPriority(7);
+  }
+
+  // Try to reduce latency
+  {
+    IDXGIDevice1* dxgi1;
+    HRESULT status = device_.dxgi_device()->QueryInterface(IID_IDXGIDevice, (void **)&dxgi1);
+    if(FAILED(status)) {
+      RTC_LOG(LS_WARNING) << "Failed to query DXGI interface from device";
+      return -1;
+    }
+
+    status = dxgi1->SetMaximumFrameLatency(1);
+    if(FAILED(status)) {
+      RTC_LOG(LS_WARNING) << "Failed to set maximum frame latency";
+    }
+  }
+
   for (int i = 0;; i++) {
     ComPtr<IDXGIOutput> output;
     _com_error error =
