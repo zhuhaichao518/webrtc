@@ -27,6 +27,8 @@ class D3dDevice {
   D3dDevice(const D3dDevice& other);
   D3dDevice(D3dDevice&& other);
   ~D3dDevice();
+  
+  Microsoft::WRL::ComPtr<ID3D11Device> d3d_device_com() const { return d3d_device_; }
 
   ID3D11Device* d3d_device() const { return d3d_device_.Get(); }
 

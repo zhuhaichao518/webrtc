@@ -35,6 +35,10 @@ class DxgiTextureMapping : public DxgiTexture {
  protected:
   bool CopyFromTexture(const DXGI_OUTDUPL_FRAME_INFO& frame_info,
                        ID3D11Texture2D* texture) override;
+  // This should not be called because we should not perform GPU copy when 
+  // output duplicator does not support.
+  bool GPUCopyFromTexture(const DXGI_OUTDUPL_FRAME_INFO& frame_info,
+                       ID3D11Texture2D* texture) override { return true;}
 
   bool DoRelease() override;
 

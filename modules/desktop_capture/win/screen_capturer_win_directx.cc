@@ -189,6 +189,8 @@ void ScreenCapturerWinDirectx::CaptureFrame() {
     case DuplicateResult::SUCCEEDED: {
       std::unique_ptr<DesktopFrame> frame =
           frames.current_frame()->frame()->Share();
+      frame->SetDevice(frames.current_frame()->frame()->GetDevice());
+      frame->SetTexture(frames.current_frame()->frame()->GetTexture());
 
       int capture_time_ms = (rtc::TimeNanos() - capture_start_time_nanos) /
                             rtc::kNumNanosecsPerMillisec;

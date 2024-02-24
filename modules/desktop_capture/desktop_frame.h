@@ -15,6 +15,10 @@
 
 #include <memory>
 #include <vector>
+#if defined(WEBRTC_WIN)
+#include <d3d11.h>
+#include <wrl/client.h>
+#endif
 
 #include "modules/desktop_capture/desktop_geometry.h"
 #include "modules/desktop_capture/desktop_region.h"
@@ -149,6 +153,13 @@ class RTC_EXPORT DesktopFrame {
   // otherwise. Also returns false if the frame is empty.
   bool FrameDataIsBlack() const;
 
+#if defined(WEBRTC_WIN)
+  void SetDevice(Microsoft::WRL::ComPtr<ID3D11Device> device) { device_ = device; }
+  void SetTexture(Microsoft::WRL::ComPtr<ID3D11Texture2D> texture) { texture_ = texture; }
+  Microsoft::WRL::ComPtr<ID3D11Device> GetDevice() {return device_; }
+  Microsoft::WRL::ComPtr<ID3D11Texture2D> GetTexture() {return texture_; }
+#endif
+
  protected:
   DesktopFrame(DesktopSize size,
                int stride,
@@ -172,6 +183,11 @@ class RTC_EXPORT DesktopFrame {
   int64_t capture_time_ms_;
   uint32_t capturer_id_;
   std::vector<uint8_t> icc_profile_;
+#if defined(WEBRTC_WIN)
+  // We need it to aviod a copy to memory and directly send it to ffmpeg(NVENC) encoder.
+  Microsoft::WRL::ComPtr<ID3D11Device> device_;
+  Microsoft::WRL::ComPtr<ID3D11Texture2D> texture_;
+#endif
 };
 
 // A DesktopFrame that stores data in the heap.

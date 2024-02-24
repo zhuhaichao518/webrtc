@@ -42,6 +42,11 @@ class DxgiTextureStaging : public DxgiTexture {
   // Returns false if anything wrong.
   bool CopyFromTexture(const DXGI_OUTDUPL_FRAME_INFO& frame_info,
                        ID3D11Texture2D* texture) override;
+  
+  // Without map GPU texture to CPU accessable.
+  bool GPUCopyFromTexture(
+      const DXGI_OUTDUPL_FRAME_INFO& frame_info,
+      ID3D11Texture2D* texture) override;
 
   bool DoRelease() override;
 
@@ -59,8 +64,8 @@ class DxgiTextureStaging : public DxgiTexture {
 
   const DesktopRect desktop_rect_;
   const D3dDevice device_;
-  Microsoft::WRL::ComPtr<ID3D11Texture2D> stage_;
   Microsoft::WRL::ComPtr<IDXGISurface> surface_;
+  bool is_mapping_to_CPU_;
 };
 
 }  // namespace webrtc

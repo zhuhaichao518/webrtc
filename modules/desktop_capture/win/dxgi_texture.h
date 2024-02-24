@@ -37,6 +37,9 @@ class DxgiTexture {
   bool CopyFrom(const DXGI_OUTDUPL_FRAME_INFO& frame_info,
                 IDXGIResource* resource);
 
+  bool GPUCopyFrom(const DXGI_OUTDUPL_FRAME_INFO& frame_info,
+                           IDXGIResource* resource);
+
   const DesktopSize& desktop_size() const { return desktop_size_; }
 
   uint8_t* bits() const { return static_cast<uint8_t*>(rect_.pBits); }
@@ -54,10 +57,20 @@ class DxgiTexture {
   // only. And it should not outlive its DxgiTexture instance.
   const DesktopFrame& AsDesktopFrame();
 
+  Microsoft::WRL::ComPtr<ID3D11Texture2D> GPUTexture(){
+    return stage_;
+  }
+
+  //move stage_ here because we may want to pass it to DesktopFrame.
+  Microsoft::WRL::ComPtr<ID3D11Texture2D> stage_;
+
  protected:
   DXGI_MAPPED_RECT* rect();
 
   virtual bool CopyFromTexture(const DXGI_OUTDUPL_FRAME_INFO& frame_info,
+                               ID3D11Texture2D* texture) = 0;
+
+  virtual bool GPUCopyFromTexture(const DXGI_OUTDUPL_FRAME_INFO& frame_info,
                                ID3D11Texture2D* texture) = 0;
 
   virtual bool DoRelease() = 0;

@@ -9,7 +9,9 @@
  */
 
 #include "modules/desktop_capture/desktop_frame.h"
-
+/*
+#include <d3d11.h>
+*/
 #include <string.h>
 
 #include <cmath>
@@ -26,13 +28,21 @@ namespace webrtc {
 DesktopFrame::DesktopFrame(DesktopSize size,
                            int stride,
                            uint8_t* data,
-                           SharedMemory* shared_memory)
+                           SharedMemory* shared_memory/*,
+#ifdef WEBRTC_WIN
+                           Microsoft::WRL::ComPtr<ID3D11Texture2D> texture
+#endif*/
+                           )
     : data_(data),
       shared_memory_(shared_memory),
       size_(size),
       stride_(stride),
       capture_time_ms_(0),
-      capturer_id_(DesktopCapturerId::kUnknown) {
+      capturer_id_(DesktopCapturerId::kUnknown)
+/*#ifdef WEBRTC_WIN
+      ,texture_(texture)
+#endif */
+{
   RTC_DCHECK(size_.width() >= 0);
   RTC_DCHECK(size_.height() >= 0);
 }

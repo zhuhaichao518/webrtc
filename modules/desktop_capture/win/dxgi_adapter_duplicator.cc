@@ -105,6 +105,7 @@ bool DxgiAdapterDuplicator::DoInitialize() {
     if(FAILED(status)) {
       RTC_LOG(LS_WARNING) << "Failed to set maximum frame latency";
     }
+    dxgi1->Release();
   }
 
   for (int i = 0;; i++) {

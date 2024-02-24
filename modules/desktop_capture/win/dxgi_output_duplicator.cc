@@ -61,6 +61,7 @@ Rotation DxgiRotationToRotation(DXGI_MODE_ROTATION rotation) {
 }
 
 }  // namespace
+bool DxgiOutputDuplicator::hardware_acclerated_gpu = true;
 
 DxgiOutputDuplicator::DxgiOutputDuplicator(const D3dDevice& device,
                                            const ComPtr<IDXGIOutput1>& output,
@@ -88,6 +89,8 @@ DxgiOutputDuplicator::~DxgiOutputDuplicator() {
 bool DxgiOutputDuplicator::Initialize() {
   if (DuplicateOutput()) {
     if (desc_.DesktopImageInSystemMemory) {
+      //The graphic card does not support. Use the default behavior.
+      hardware_acclerated_gpu = false;
       texture_.reset(new DxgiTextureMapping(duplication_.Get()));
     } else {
       texture_.reset(new DxgiTextureStaging(device_));
@@ -208,7 +211,11 @@ bool DxgiOutputDuplicator::Duplicate(Context* context,
   if (error.Error() == S_OK && frame_info.AccumulatedFrames > 0 && resource) {
     DetectUpdatedRegion(frame_info, &context->updated_region);
     SpreadContextChange(context);
-    if (!texture_->CopyFrom(frame_info, resource.Get())) {
+    if (hardware_acclerated_gpu){
+      if (!texture_->GPUCopyFrom(frame_info, resource.Get())) {
+        return false;
+      }
+    } else if (!texture_->CopyFrom(frame_info, resource.Get())) {
       return false;
     }
     updated_region.AddRegion(context->updated_region);
@@ -216,22 +223,28 @@ bool DxgiOutputDuplicator::Duplicate(Context* context,
     // triggers screen flickering?
 
     const DesktopFrame& source = texture_->AsDesktopFrame();
-    if (rotation_ != Rotation::CLOCK_WISE_0) {
-      for (DesktopRegion::Iterator it(updated_region); !it.IsAtEnd();
-           it.Advance()) {
-        // The `updated_region` returned by Windows is rotated, but the `source`
-        // frame is not. So we need to rotate it reversely.
-        const DesktopRect source_rect =
-            RotateRect(it.rect(), desktop_size(), ReverseRotation(rotation_));
-        RotateDesktopFrame(source, source_rect, rotation_, offset, target);
-      }
+    
+    if (hardware_acclerated_gpu){
+      target->SetDevice(device_.d3d_device_com());
+      target->SetTexture(texture_->GPUTexture());
     } else {
-      for (DesktopRegion::Iterator it(updated_region); !it.IsAtEnd();
-           it.Advance()) {
-        // The DesktopRect in `target`, starts from offset.
-        DesktopRect dest_rect = it.rect();
-        dest_rect.Translate(offset);
-        target->CopyPixelsFrom(source, it.rect().top_left(), dest_rect);
+      if (rotation_ != Rotation::CLOCK_WISE_0) {
+        for (DesktopRegion::Iterator it(updated_region); !it.IsAtEnd();
+            it.Advance()) {
+          // The `updated_region` returned by Windows is rotated, but the `source`
+          // frame is not. So we need to rotate it reversely.
+          const DesktopRect source_rect =
+              RotateRect(it.rect(), desktop_size(), ReverseRotation(rotation_));
+          RotateDesktopFrame(source, source_rect, rotation_, offset, target);
+        }
+      } else {
+        for (DesktopRegion::Iterator it(updated_region); !it.IsAtEnd();
+            it.Advance()) {
+          // The DesktopRect in `target`, starts from offset.
+          DesktopRect dest_rect = it.rect();
+          dest_rect.Translate(offset);
+          target->CopyPixelsFrom(source, it.rect().top_left(), dest_rect);
+        }
       }
     }
     last_frame_ = target->Share();
@@ -240,6 +253,7 @@ bool DxgiOutputDuplicator::Duplicate(Context* context,
     target->mutable_updated_region()->AddRegion(updated_region);
     target->set_may_contain_cursor(cursor_embedded_in_frame);
     num_frames_captured_++;
+    //Haichao: Maybe we do not want to release the texture here because nvenc may not have encoded it yet?
     return texture_->Release() && ReleaseFrame();
   }
 
@@ -248,13 +262,18 @@ bool DxgiOutputDuplicator::Duplicate(Context* context,
     // export last frame to the target.
     for (DesktopRegion::Iterator it(updated_region); !it.IsAtEnd();
          it.Advance()) {
-      // The DesktopRect in `source`, starts from last_frame_offset_.
-      DesktopRect source_rect = it.rect();
-      // The DesktopRect in `target`, starts from offset.
-      DesktopRect target_rect = source_rect;
-      source_rect.Translate(last_frame_offset_);
-      target_rect.Translate(offset);
-      target->CopyPixelsFrom(*last_frame_, source_rect.top_left(), target_rect);
+      if (hardware_acclerated_gpu){
+        target->SetDevice(device_.d3d_device_com());
+        target->SetTexture(last_frame_->GetTexture());
+      }else{
+        // The DesktopRect in `source`, starts from last_frame_offset_.
+        DesktopRect source_rect = it.rect();
+        // The DesktopRect in `target`, starts from offset.
+        DesktopRect target_rect = source_rect;
+        source_rect.Translate(last_frame_offset_);
+        target_rect.Translate(offset);
+        target->CopyPixelsFrom(*last_frame_, source_rect.top_left(), target_rect);
+      }
     }
     updated_region.Translate(offset.x(), offset.y());
     target->mutable_updated_region()->AddRegion(updated_region);

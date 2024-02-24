@@ -36,6 +36,9 @@ namespace webrtc {
 class DxgiOutputDuplicator {
  public:
   using Context = DxgiOutputContext;
+  
+  //Avoid GPU copy from hw.
+  static bool hardware_acclerated_gpu;
 
   // Creates an instance of DxgiOutputDuplicator from a D3dDevice and one of its
   // IDXGIOutput1. Caller must maintain the lifetime of device, to make sure it

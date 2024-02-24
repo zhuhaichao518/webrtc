@@ -113,15 +113,36 @@ bool DxgiTextureStaging::CopyFromTexture(
                       << desktop_capture::utils::ComErrorToString(error);
     return false;
   }
+  is_mapping_to_CPU_ = true;
+  return true;
+}
 
+bool DxgiTextureStaging::GPUCopyFromTexture(
+    const DXGI_OUTDUPL_FRAME_INFO& frame_info,
+    ID3D11Texture2D* texture) {
+  RTC_DCHECK_GT(frame_info.AccumulatedFrames, 0);
+  RTC_DCHECK(texture);
+
+  // AcquireNextFrame returns a CPU inaccessible IDXGIResource, so we need to
+  // copy it to a CPU accessible staging ID3D11Texture2D.
+  // Haichao: It seems the flags are right, check in the future.
+  if (!InitializeStage(texture)) {
+    return false;
+  }
+
+  device_.context()->CopyResource(static_cast<ID3D11Resource*>(stage_.Get()),
+                                  static_cast<ID3D11Resource*>(texture));
+  is_mapping_to_CPU_ = false;
   return true;
 }
 
 bool DxgiTextureStaging::DoRelease() {
-  _com_error error = surface_->Unmap();
-  if (error.Error() != S_OK) {
-    stage_.Reset();
-    surface_.Reset();
+  if (is_mapping_to_CPU_){
+    _com_error error = surface_->Unmap();
+    if (error.Error() != S_OK) {
+      stage_.Reset();
+      surface_.Reset();
+    }
   }
   // If using staging mode, we only need to recreate ID3D11Texture2D instance.
   // This will happen during next CopyFrom call. So this function always returns

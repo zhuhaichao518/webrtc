@@ -31,6 +31,9 @@ class DxgiDesktopFrame : public DesktopFrame {
       : DesktopFrame(texture.desktop_size(),
                      texture.pitch(),
                      texture.bits(),
+/*#ifdef WEBRTC_WIN
+                     texture.GPUTexture(),
+#endif*/
                      nullptr) {}
 
   ~DxgiDesktopFrame() override = default;
@@ -60,6 +63,27 @@ bool DxgiTexture::CopyFrom(const DXGI_OUTDUPL_FRAME_INFO& frame_info,
   desktop_size_.set(desc.Width, desc.Height);
 
   return CopyFromTexture(frame_info, texture.Get());
+}
+
+bool DxgiTexture::GPUCopyFrom(const DXGI_OUTDUPL_FRAME_INFO& frame_info,
+                           IDXGIResource* resource) {
+  RTC_DCHECK_GT(frame_info.AccumulatedFrames, 0);
+  RTC_DCHECK(resource);
+  ComPtr<ID3D11Texture2D> texture;
+  _com_error error = resource->QueryInterface(
+      __uuidof(ID3D11Texture2D),
+      reinterpret_cast<void**>(texture.GetAddressOf()));
+  if (error.Error() != S_OK || !texture) {
+    RTC_LOG(LS_ERROR) << "Failed to convert IDXGIResource to ID3D11Texture2D: "
+                      << desktop_capture::utils::ComErrorToString(error);
+    return false;
+  }
+
+  D3D11_TEXTURE2D_DESC desc = {0};
+  texture->GetDesc(&desc);
+  desktop_size_.set(desc.Width, desc.Height);
+
+  return GPUCopyFromTexture(frame_info, texture.Get());
 }
 
 const DesktopFrame& DxgiTexture::AsDesktopFrame() {
