@@ -98,7 +98,7 @@ class H264HWEncoderImpl : public H264HWEncoder {
   void ReportInit();
   void ReportError();
 
-  std::vector<ISVCEncoder*> encoders_;
+  //std::vector<ISVCEncoder*> encoders_;
   std::vector<SSourcePicture> pictures_;
   std::vector<rtc::scoped_refptr<I420Buffer>> downscaled_buffers_;
   std::vector<LayerConfig> configurations_;
@@ -106,7 +106,9 @@ class H264HWEncoderImpl : public H264HWEncoder {
   std::vector<std::unique_ptr<ScalableVideoController>> svc_controllers_;
   absl::InlinedVector<absl::optional<ScalabilityMode>, kMaxSimulcastStreams>
       scalability_modes_;
-
+  
+  //Maybe we will have a list for simulcast
+  FFEncoder ffencoder_;
   VideoCodec codec_;
   H264PacketizationMode packetization_mode_;
   size_t max_payload_size_;
@@ -118,12 +120,6 @@ class H264HWEncoderImpl : public H264HWEncoder {
   bool has_reported_error_;
 
   std::vector<uint8_t> tl0sync_limit_;
-
-  std::unique_ptr<AVCodecContext, AVCodecContextDeleter> av_context_;
-  std::unique_ptr<AVFrame, AVFrameDeleter> av_frame_;
-  AVBufferRef* m_HwDeviceContext = nullptr;
-  AVBufferRef* m_HwFramesContext = nullptr;
-  ID3D11Device* d3dDevice_ = nullptr;
 };
 
 }  // namespace webrtc

@@ -37,6 +37,7 @@
 #include "third_party/openh264/src/codec/api/wels/codec_app_def.h"
 
 class ISVCEncoder;
+class FFEncoder;
 
 namespace webrtc {
 

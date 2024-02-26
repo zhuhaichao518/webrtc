@@ -1,0 +1,52 @@
+#ifndef FF_ENCODER_H
+#define FF_ENCODER_H
+
+#include <memory>
+#include <string>
+#include <vector>
+//#ifdef WEBRTC_WIN
+#include <d3d11.h>
+//#endif
+
+extern "C" {
+#include "third_party/ffmpeg/libavcodec/avcodec.h"
+#include "third_party/ffmpeg/libavformat/avformat.h"
+#include "third_party/ffmpeg/libavutil/hwcontext.h"
+}  // extern "C"
+
+#include "api/video_codecs/video_encoder.h"
+
+class FFEncoder {
+public:
+    FFEncoder();
+    ~FFEncoder();
+
+    bool init(const std::string& codec_name, const VideoCodec* inst);
+    bool supportsCodec(const std::string& codec_name);
+    bool EncodeFrame(void* frame);
+    bool setEncoderParams(const std::vector<std::pair<std::string, std::string>>& params);
+
+private: 
+    VideoCodec codecsettings_;
+    bool hardware;
+    struct AVCodecContextDeleter {
+      void operator()(AVCodecContext* av_context_) { avcodec_free_context(&av_context_); }
+    };
+    std::unique_ptr<AVCodecContext, AVCodecContextDeleter> av_context_;
+    struct AVFrameDeleter {
+        void operator()(AVFrame* frame) { av_frame_free(&frame); }
+    };
+    std::unique_ptr<AVFrame, AVFrameDeleter> av_frame_;
+
+    std::unique_ptr<AVBufferRef, decltype(&av_buffer_unref)> m_HwDeviceContext;
+
+    std::unique_ptr<AVBufferRef, decltype(&av_buffer_unref)> frame_ref;
+
+    std::unique_ptr<AVHWFramesContext, decltype(&av_buffer_unref)> m_HwFramesContext;
+
+//#if defined(WEBRTC_WIN)
+    ID3D11Device* d3dDevice_ = nullptr;
+//#endif
+};
+
+#endif // FF_ENCODER_H

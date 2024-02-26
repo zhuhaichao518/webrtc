@@ -25,6 +25,7 @@
 #include "api/video/video_codec_constants.h"
 #include "api/video_codecs/scalability_mode.h"
 #include "common_video/libyuv/include/webrtc_libyuv.h"
+#include "modules/video_coding/codecs/h264/FFEncoder.h"
 #include "modules/video_coding/svc/create_scalability_structure.h"
 #include "modules/video_coding/utility/simulcast_rate_allocator.h"
 #include "modules/video_coding/utility/simulcast_utility.h"
@@ -270,6 +271,10 @@ int32_t H264HWEncoderImpl::InitEncode(const VideoCodec* inst,
 
   for (int i = 0, idx = number_of_streams - 1; i < number_of_streams;
        ++i, --idx) {
+
+    if (!ffencoder_->init("h264_nvenc")){
+      return WEBRTC_VIDEO_CODEC_ENCODER_FAILURE;
+    }
     AVCodec *codec;
     int ret;
 
