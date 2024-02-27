@@ -252,9 +252,9 @@ vpx_enc_frame_flags_t LibvpxVp8Encoder::EncodeFlags(
   return flags;
 }
 
-LibvpxVp8Encoder::LibvpxVp8Encoder(std::unique_ptr<LibvpxInterface> interface,
+LibvpxVp8Encoder::LibvpxVp8Encoder(std::unique_ptr<LibvpxInterface> interface_t,
                                    VP8Encoder::Settings settings)
-    : libvpx_(std::move(interface)),
+    : libvpx_(std::move(interface_t)),
       rate_control_settings_(RateControlSettings::ParseFromFieldTrials()),
       frame_buffer_controller_factory_(
           std::move(settings.frame_buffer_controller_factory)),

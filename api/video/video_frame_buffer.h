@@ -13,6 +13,12 @@
 
 #include <stdint.h>
 
+#ifdef WEBRTC_WIN
+#include <d3d11.h>
+//It is strage that microsoft keeps 'interface' as a key word,
+#include <wrl/client.h>
+#endif
+
 #include "api/array_view.h"
 #include "api/scoped_refptr.h"
 #include "rtc_base/ref_count.h"
@@ -71,7 +77,10 @@ class RTC_EXPORT VideoFrameBuffer : public rtc::RefCountInterface {
   virtual int width() const = 0;
   virtual int height() const = 0;
 
-  virtual void* GetNative() const {return nullptr;}
+#ifdef WEBRTC_WIN
+  virtual Microsoft::WRL::ComPtr<ID3D11Device> GetDevice() {return nullptr;}
+  virtual Microsoft::WRL::ComPtr<ID3D11Texture2D> GetTexture() {return nullptr;}
+#endif
   // Returns a memory-backed frame buffer in I420 format. If the pixel data is
   // in another format, a conversion will take place. All implementations must
   // provide a fallback to I420 for compatibility with e.g. the internal WebRTC

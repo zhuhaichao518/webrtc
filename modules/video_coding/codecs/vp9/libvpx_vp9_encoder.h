@@ -38,7 +38,7 @@ namespace webrtc {
 class LibvpxVp9Encoder : public VP9Encoder {
  public:
   LibvpxVp9Encoder(const cricket::VideoCodec& codec,
-                   std::unique_ptr<LibvpxInterface> interface,
+                   std::unique_ptr<LibvpxInterface> interface_t,
                    const FieldTrialsView& trials);
 
   ~LibvpxVp9Encoder() override;

@@ -36,7 +36,7 @@ namespace webrtc {
 
 class LibvpxVp8Encoder : public VideoEncoder {
  public:
-  LibvpxVp8Encoder(std::unique_ptr<LibvpxInterface> interface,
+  LibvpxVp8Encoder(std::unique_ptr<LibvpxInterface> interface_t,
                    VP8Encoder::Settings settings);
   ~LibvpxVp8Encoder() override;
 

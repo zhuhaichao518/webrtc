@@ -55,6 +55,9 @@ bool DxgiFrame::Prepare(DesktopSize size, DesktopCapturer::SourceId source_id) {
                     frame->size().width() * DesktopFrame::kBytesPerPixel);
       memset(frame->data(), 0, frame->stride() * frame->size().height());
     } else {
+      //haichao:if (support_hardware) {
+      //  frame.reset(new HWDesktopFrame(size));
+      //}
       frame.reset(new BasicDesktopFrame(size));
     }
 

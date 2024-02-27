@@ -5,12 +5,26 @@
 #include "api/video/video_frame_buffer.h"
 #include "rtc_base/checks.h"
 
+#ifdef WEBRTC_WIN
+#include <d3d11.h>
+#include <wrl/client.h>
+#endif
+
 namespace webrtc {
 using namespace webrtc;
 class NativeHandleBuffer : public VideoFrameBuffer {
  public:
-  NativeHandleBuffer(void* native_handle, int width, int height)
-      : native_handle_(native_handle), width_(width), height_(height) {}
+  //TODO(Haichao): support MacOS?
+#ifdef WEBRTC_WIN
+  NativeHandleBuffer(Microsoft::WRL::ComPtr<ID3D11Device> device, 
+   Microsoft::WRL::ComPtr<ID3D11Texture2D> texture, int width, int height)
+      : device_(device), texture_(texture), width_(width), height_(height) {}
+#endif
+#ifdef WEBRTC_MAC
+//IOSurface?
+  NativeHandleBuffer(int width, int height)
+      : width_(width), height_(height) {}
+#endif
   Type type() const override { return Type::kNative; }
   int width() const override { return width_; }
   int height() const override { return height_; }
@@ -18,10 +32,16 @@ class NativeHandleBuffer : public VideoFrameBuffer {
     return nullptr;
   }
 
-  void* GetNative() const override{ return native_handle_; }
+#ifdef WEBRTC_WIN
+  Microsoft::WRL::ComPtr<ID3D11Device> GetDevice() override {return device_; }
+  Microsoft::WRL::ComPtr<ID3D11Texture2D> GetTexture() override {return texture_; }
+#endif
 
  private:
-  void* native_handle_;
+#ifdef WEBRTC_WIN
+  Microsoft::WRL::ComPtr<ID3D11Device> device_;
+  Microsoft::WRL::ComPtr<ID3D11Texture2D> texture_;
+#endif
   const int width_;
   const int height_;
 };

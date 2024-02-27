@@ -220,9 +220,9 @@ void LibvpxVp9Encoder::EncoderOutputCodedPacketCallback(vpx_codec_cx_pkt* pkt,
 }
 
 LibvpxVp9Encoder::LibvpxVp9Encoder(const cricket::VideoCodec& codec,
-                                   std::unique_ptr<LibvpxInterface> interface,
+                                   std::unique_ptr<LibvpxInterface> interface_t,
                                    const FieldTrialsView& trials)
-    : libvpx_(std::move(interface)),
+    : libvpx_(std::move(interface_t)),
       encoded_image_(),
       encoded_complete_callback_(nullptr),
       profile_(
