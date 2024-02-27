@@ -28,10 +28,11 @@ namespace webrtc {
 DesktopFrame::DesktopFrame(DesktopSize size,
                            int stride,
                            uint8_t* data,
-                           SharedMemory* shared_memory/*,
+                           SharedMemory* shared_memory
 #ifdef WEBRTC_WIN
+                           ,Microsoft::WRL::ComPtr<ID3D11Device> device,
                            Microsoft::WRL::ComPtr<ID3D11Texture2D> texture
-#endif*/
+#endif
                            )
     : data_(data),
       shared_memory_(shared_memory),
@@ -39,10 +40,11 @@ DesktopFrame::DesktopFrame(DesktopSize size,
       stride_(stride),
       capture_time_ms_(0),
       capturer_id_(DesktopCapturerId::kUnknown)
-/*#ifdef WEBRTC_WIN
-      ,texture_(texture)
-#endif */
 {
+#ifdef WEBRTC_WIN
+  device_ = device;
+  texture_ = texture;
+#endif
   RTC_DCHECK(size_.width() >= 0);
   RTC_DCHECK(size_.height() >= 0);
 }
@@ -177,7 +179,11 @@ BasicDesktopFrame::BasicDesktopFrame(DesktopSize size)
     : DesktopFrame(size,
                    kBytesPerPixel * size.width(),
                    new uint8_t[kBytesPerPixel * size.width() * size.height()](),
-                   nullptr) {}
+                   nullptr
+#ifdef WEBRTC_WIN
+                   ,nullptr,nullptr
+#endif
+                   ) {}
 
 BasicDesktopFrame::~BasicDesktopFrame() {
   delete[] data_;
@@ -219,7 +225,12 @@ SharedMemoryDesktopFrame::SharedMemoryDesktopFrame(DesktopSize size,
     : DesktopFrame(size,
                    stride,
                    reinterpret_cast<uint8_t*>(shared_memory->data()),
-                   shared_memory) {}
+                   shared_memory
+#ifdef WEBRTC_WIN 
+                   ,nullptr,
+                   nullptr
+#endif
+                   ) {}
 
 SharedMemoryDesktopFrame::SharedMemoryDesktopFrame(
     DesktopSize size,

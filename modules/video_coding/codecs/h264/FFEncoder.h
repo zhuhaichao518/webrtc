@@ -16,18 +16,19 @@ extern "C" {
 
 #include "api/video_codecs/video_encoder.h"
 
+namespace webrtc {
 class FFEncoder {
 public:
     FFEncoder();
     ~FFEncoder();
 
-    bool init(const std::string& codec_name, const VideoCodec* inst);
+    bool init(const std::string& codec_name);
     bool supportsCodec(const std::string& codec_name);
-    bool EncodeFrame(void* frame);
-    bool setEncoderParams(const std::vector<std::pair<std::string, std::string>>& params);
+    bool EncodeFrame(const VideoFrame& input_image);
+    bool setEncoderParams(const VideoCodec* codec_settings);
 
 private: 
-    VideoCodec codecsettings_;
+    const VideoCodec* codecsettings_;
     bool hardware;
     struct AVCodecContextDeleter {
       void operator()(AVCodecContext* av_context_) { avcodec_free_context(&av_context_); }
@@ -48,5 +49,7 @@ private:
     ID3D11Device* d3dDevice_ = nullptr;
 //#endif
 };
+
+} //namespace webrtc
 
 #endif // FF_ENCODER_H

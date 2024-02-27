@@ -56,8 +56,9 @@ class DxgiTexture {
   // DesktopFrame is used to copy a DxgiTexture content to another DesktopFrame
   // only. And it should not outlive its DxgiTexture instance.
   const DesktopFrame& AsDesktopFrame();
-
-  Microsoft::WRL::ComPtr<ID3D11Texture2D> GPUTexture(){
+  
+  // Actually we will pass it to FFmpeg and it may not be const.
+  Microsoft::WRL::ComPtr<ID3D11Texture2D> GPUTexture() const{
     return stage_;
   }
 

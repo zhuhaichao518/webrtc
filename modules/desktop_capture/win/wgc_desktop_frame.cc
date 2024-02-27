@@ -17,7 +17,12 @@ namespace webrtc {
 WgcDesktopFrame::WgcDesktopFrame(DesktopSize size,
                                  int stride,
                                  std::vector<uint8_t>&& image_data)
-    : DesktopFrame(size, stride, image_data.data(), nullptr),
+    : DesktopFrame(size, stride, image_data.data(), nullptr
+#ifdef WEBRTC_WIN
+//todo: add texture support to WgcCapture.
+    ,nullptr, nullptr
+#endif
+    ),
       image_data_(std::move(image_data)) {}
 
 WgcDesktopFrame::~WgcDesktopFrame() = default;

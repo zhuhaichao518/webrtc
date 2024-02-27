@@ -11,6 +11,7 @@ extern "C" {
 //#endif
 }  // extern "C"
 
+namespace webrtc {
 struct ScopedPtrAVFreePacket {
   void operator()(AVPacket* packet) { av_packet_free(&packet); }
 };
@@ -19,12 +20,14 @@ typedef std::unique_ptr<AVPacket, ScopedPtrAVFreePacket> ScopedAVPacket;
 FFEncoder::FFEncoder():hardware(true) {}
 
 FFEncoder::~FFEncoder() {
+  if (d3dDevice_) {
     d3dDevice_->Release();
+  }
 }
 
 void do_nothing(void *) {}
 
-bool FFEncoder::init(const std::string& codec_name, const VideoCodec* inst, void* hw_device) {
+bool FFEncoder::init(const std::string& codec_name, const VideoCodec* codec_settings) {
     int ret;
 
     d3dDevice_ = (ID3D11Device *)hw_device;
@@ -41,16 +44,16 @@ bool FFEncoder::init(const std::string& codec_name, const VideoCodec* inst, void
 
     RTC_DCHECK(!av_context_);
 
-    codecsettings_ = *inst;
+    codecsettings_ = codec_settings;
 
     // Initialize AVCodecContext.
     av_context_.reset(avcodec_alloc_context3(nullptr));
     av_context_->codec_type = AVMEDIA_TYPE_VIDEO;
     av_context_->codec_id = AV_CODEC_ID_H264;
-    av_context_->width     = codec_.width;
-    av_context_->height    = codec_.height;
-    av_context_->time_base = AVRational { 1, codec_.maxFramerate };
-    av_context_->framerate = AVRational { codec_.maxFramerate, 1 };
+    av_context_->width     = codec_settings->width;
+    av_context_->height    = codec_settings->height;
+    av_context_->time_base = AVRational { 1, codec_settings->maxFramerate };
+    av_context_->framerate = AVRational { codec_settings->maxFramerate, 1 };
     //Todo(Haichao):Add hevc and hevc_main_10 support.
     av_context_->profile = FF_PROFILE_H264_HIGH;
 
@@ -73,7 +76,7 @@ bool FFEncoder::init(const std::string& codec_name, const VideoCodec* inst, void
 
     av_context_->color_range = AVCOL_RANGE_JPEG;
     int sws_color_space;
-    if (codec_.width <= 1920){
+    if (codec_settings->width <= 1920){
       // Rec. 709
       av_context_->color_primaries = AVCOL_PRI_BT709;
       av_context_->color_trc       = AVCOL_TRC_BT709;
@@ -143,9 +146,9 @@ bool FFEncoder::init(const std::string& codec_name, const VideoCodec* inst, void
     av_context_->thread_count = av_context_->slices;
   
     // TODO(Haichao): use fixed bitrate. Check if we can use dynamic and handle QP.
-    auto bitrate = codec_.maxBitrate * 1000;
+    auto bitrate = codec_settings->maxBitrate * 1000;
     av_context_->rc_max_rate    = bitrate;
-    av_context_->rc_buffer_size = bitrate / codec_.maxFramerate;
+    av_context_->rc_buffer_size = bitrate / codec_settings->maxFramerate;
     av_context_->bit_rate       = bitrate;
     av_context_->rc_min_rate    = bitrate;
 
@@ -165,7 +168,10 @@ bool FFEncoder::init(const std::string& codec_name, const VideoCodec* inst, void
     return true;
 }
 
-bool FFEncoder::EncodeFrame(void* frame){
+bool FFEncoder::EncodeFrame(const VideoFrame& input_image){
+    if (d3dDevice_ == nullptr){
+      if (input_image->)
+    } 
     if (hardware){
         
     }
@@ -175,6 +181,8 @@ bool FFEncoder::supportsCodec(const std::string& codec_name) {
     return avcodec_find_encoder_by_name(codec_name.c_str()) != nullptr;
 }
 
-bool FFEncoder::setEncoderParams(const std::vector<std::pair<std::string, std::string>>& params) {
+bool FFEncoder::setEncoderParams(const VideoCodec* codec_settings) {
     return true;
 }
+
+} //namespace webrtc

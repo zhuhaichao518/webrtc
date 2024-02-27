@@ -21,7 +21,11 @@ DesktopFrameWin::DesktopFrameWin(DesktopSize size,
                                  uint8_t* data,
                                  std::unique_ptr<SharedMemory> shared_memory,
                                  HBITMAP bitmap)
-    : DesktopFrame(size, stride, data, shared_memory.get()),
+    : DesktopFrame(size, stride, data, shared_memory.get()
+#ifdef WEBRTC_WIN
+    , nullptr, nullptr
+#endif
+    ),
       bitmap_(bitmap),
       owned_shared_memory_(std::move(shared_memory)) {}
 

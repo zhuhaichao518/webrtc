@@ -94,7 +94,12 @@ DesktopFrameWithCursor::DesktopFrameWithCursor(
     : DesktopFrame(frame->size(),
                    frame->stride(),
                    frame->data(),
-                   frame->shared_memory()),
+                   frame->shared_memory()
+#ifdef WEBRTC_WIN
+                   ,frame->GetDevice(),
+                   frame->GetTexture()
+#endif
+                   ),
       original_frame_(std::move(frame)) {
   MoveFrameInfoFrom(original_frame_.get());
 

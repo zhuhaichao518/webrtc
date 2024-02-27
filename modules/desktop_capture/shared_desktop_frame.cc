@@ -51,7 +51,12 @@ SharedDesktopFrame::SharedDesktopFrame(rtc::scoped_refptr<Core> core)
     : DesktopFrame((*core)->size(),
                    (*core)->stride(),
                    (*core)->data(),
-                   (*core)->shared_memory()),
+                   (*core)->shared_memory()
+#ifdef WEBRTC_WIN
+                   ,(*core)->GetDevice(),
+                   (*core)->GetTexture()
+#endif
+                  ),
       core_(core) {
   CopyFrameInfoFrom(*(core_->get()));
 }

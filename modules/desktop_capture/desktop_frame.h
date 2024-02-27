@@ -164,7 +164,12 @@ class RTC_EXPORT DesktopFrame {
   DesktopFrame(DesktopSize size,
                int stride,
                uint8_t* data,
-               SharedMemory* shared_memory);
+               SharedMemory* shared_memory
+#if defined(WEBRTC_WIN)
+               ,Microsoft::WRL::ComPtr<ID3D11Device> device,// = nullptr,
+               Microsoft::WRL::ComPtr<ID3D11Texture2D> texture// = nullptr
+#endif                    
+               );
 
   // Ownership of the buffers is defined by the classes that inherit from this
   // class. They must guarantee that the buffer is not deleted before the frame

@@ -31,10 +31,13 @@ class DxgiDesktopFrame : public DesktopFrame {
       : DesktopFrame(texture.desktop_size(),
                      texture.pitch(),
                      texture.bits(),
-/*#ifdef WEBRTC_WIN
-                     texture.GPUTexture(),
-#endif*/
-                     nullptr) {}
+                     nullptr
+#ifdef WEBRTC_WIN
+                     ,nullptr,
+                     
+                     texture.GPUTexture()
+#endif
+                     ) {}
 
   ~DxgiDesktopFrame() override = default;
 };

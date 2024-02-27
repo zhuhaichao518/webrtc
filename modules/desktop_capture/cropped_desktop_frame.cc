@@ -55,7 +55,12 @@ CroppedDesktopFrame::CroppedDesktopFrame(std::unique_ptr<DesktopFrame> frame,
     : DesktopFrame(rect.size(),
                    frame->stride(),
                    frame->GetFrameDataAtPos(rect.top_left()),
-                   frame->shared_memory()),
+                   frame->shared_memory()
+#ifdef WEBRTC_WIN
+                   ,frame->GetDevice(),
+                   frame->GetTexture()
+#endif                   
+                  ),
       frame_(std::move(frame)) {
   MoveFrameInfoFrom(frame_.get());
   set_top_left(frame_->top_left().add(rect.top_left()));

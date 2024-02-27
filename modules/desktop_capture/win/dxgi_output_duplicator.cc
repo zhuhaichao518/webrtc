@@ -224,10 +224,7 @@ bool DxgiOutputDuplicator::Duplicate(Context* context,
 
     const DesktopFrame& source = texture_->AsDesktopFrame();
     
-    if (hardware_acclerated_gpu){
-      target->SetDevice(device_.d3d_device_com());
-      target->SetTexture(texture_->GPUTexture());
-    } else {
+    if (!hardware_acclerated_gpu){
       if (rotation_ != Rotation::CLOCK_WISE_0) {
         for (DesktopRegion::Iterator it(updated_region); !it.IsAtEnd();
             it.Advance()) {
@@ -246,7 +243,14 @@ bool DxgiOutputDuplicator::Duplicate(Context* context,
           target->CopyPixelsFrom(source, it.rect().top_left(), dest_rect);
         }
       }
+
+    } 
+    else {
+      //We pass the d3d device comptr to frame just in case it is released before texuture.
+      target->SetDevice(device_.d3d_device_com());
+      //target->SetTexture(texture_->GPUTexture());
     }
+
     last_frame_ = target->Share();
     last_frame_offset_ = offset;
     updated_region.Translate(offset.x(), offset.y());
