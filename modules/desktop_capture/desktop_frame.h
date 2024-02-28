@@ -211,6 +211,22 @@ class RTC_EXPORT BasicDesktopFrame : public DesktopFrame {
   static DesktopFrame* CopyOf(const DesktopFrame& frame);
 };
 
+// A DesktopFrame that stores data in the GPU Memory.
+class RTC_EXPORT GPUDesktopFrame : public DesktopFrame {
+ public:
+  // The entire data buffer used for the frame is initialized with zeros.
+  explicit GPUDesktopFrame(DesktopSize size);
+
+  ~GPUDesktopFrame() override;
+
+  GPUDesktopFrame(const GPUDesktopFrame&) = delete;
+  GPUDesktopFrame& operator=(const GPUDesktopFrame&) = delete;
+
+  // Creates a GPUDesktopFrame that contains copy of `frame`.
+  // TODO(zijiehe): Return std::unique_ptr<DesktopFrame>
+  static DesktopFrame* CopyOf(const GPUDesktopFrame& frame);
+};
+
 // A DesktopFrame that stores data in shared memory.
 class RTC_EXPORT SharedMemoryDesktopFrame : public DesktopFrame {
  public:

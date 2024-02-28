@@ -203,6 +203,25 @@ DesktopFrame* BasicDesktopFrame::CopyOf(const DesktopFrame& frame) {
   return result;
 }
 
+GPUDesktopFrame::GPUDesktopFrame(DesktopSize size)
+    : DesktopFrame(size,
+                   kBytesPerPixel * size.width(),
+                   nullptr,
+                   nullptr
+#ifdef WEBRTC_WIN
+                   ,nullptr,nullptr
+#endif
+                   ) {}
+
+GPUDesktopFrame::~GPUDesktopFrame() {
+}
+
+// static
+DesktopFrame* GPUDesktopFrame::CopyOf(const GPUDesktopFrame& frame) {
+  DesktopFrame* result = new GPUDesktopFrame(frame.size());
+  return result;
+}
+
 // static
 std::unique_ptr<DesktopFrame> SharedMemoryDesktopFrame::Create(
     DesktopSize size,

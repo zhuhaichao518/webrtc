@@ -94,11 +94,15 @@ void BlankDetectorDesktopCapturerWrapper::OnCaptureResult(
     return;
   }
 
+  if (is_first_frame_) {
+    is_first_frame_ = false;
+  }
+
   // If nothing has been changed in current frame, we do not need to check it
   // again.
   if (!frame->updated_region().is_empty() || is_first_frame_) {
-    last_frame_is_blank_ =
-        frame->GetTexture() == nullptr && IsBlankFrame(*frame);
+  // Haichao: Why sometimes texture is null?
+    last_frame_is_blank_ = frame->GetDevice() == nullptr && IsBlankFrame(*frame);
     is_first_frame_ = false;
   }
   RTC_HISTOGRAM_BOOLEAN("WebRTC.DesktopCapture.BlankFrameDetected",

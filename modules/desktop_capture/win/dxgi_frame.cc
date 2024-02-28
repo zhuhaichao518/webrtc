@@ -55,10 +55,10 @@ bool DxgiFrame::Prepare(DesktopSize size, DesktopCapturer::SourceId source_id) {
                     frame->size().width() * DesktopFrame::kBytesPerPixel);
       memset(frame->data(), 0, frame->stride() * frame->size().height());
     } else {
-      //haichao:if (support_hardware) {
-      //  frame.reset(new HWDesktopFrame(size));
+      //haichao:if (not support_hardware) {
+      //  frame.reset(new BasicDesktopFrame(size));
       //}
-      frame.reset(new BasicDesktopFrame(size));
+      frame.reset(new GPUDesktopFrame(size));
     }
 
     frame_ = SharedDesktopFrame::Wrap(std::move(frame));

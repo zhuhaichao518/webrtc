@@ -211,7 +211,8 @@ void DesktopCapturerDifferWrapper::OnCaptureResult(
     last_frame_.reset();
   }
 
-  if (last_frame_) {
+  //Haichao: Does the region influence performance?
+  if (last_frame_ && frame->GetDevice() == nullptr) {
     DesktopRegion hints;
     hints.Swap(frame->mutable_updated_region());
     for (DesktopRegion::Iterator it(hints); !it.IsAtEnd(); it.Advance()) {

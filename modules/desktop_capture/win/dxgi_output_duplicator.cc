@@ -248,6 +248,9 @@ bool DxgiOutputDuplicator::Duplicate(Context* context,
     else {
       //We pass the d3d device comptr to frame just in case it is released before texuture.
       target->SetDevice(device_.d3d_device_com());
+      if (texture_->GPUTexture() == nullptr) {
+        return false;
+      }
       target->SetTexture(texture_->GPUTexture());
     }
 
