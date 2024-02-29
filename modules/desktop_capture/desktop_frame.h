@@ -154,6 +154,8 @@ class RTC_EXPORT DesktopFrame {
   bool FrameDataIsBlack() const;
 
 #if defined(WEBRTC_WIN)
+  //This frame is currently used by encoder.
+  std::atomic<bool> in_use = false;
   void SetDevice(Microsoft::WRL::ComPtr<ID3D11Device> device) { device_ = device; }
   void SetTexture(Microsoft::WRL::ComPtr<ID3D11Texture2D> texture) { texture_ = texture; }
   Microsoft::WRL::ComPtr<ID3D11Device> GetDevice() {return device_; }

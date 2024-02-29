@@ -6,6 +6,7 @@
 #include <vector>
 //#ifdef WEBRTC_WIN
 #include <d3d11.h>
+#include <wrl/client.h>
 //#endif
 
 extern "C" {
@@ -23,6 +24,7 @@ public:
     ~FFEncoder();
 
     bool init(const std::string& codec_name);
+    bool ContinueInit(const VideoFrame& input_image);
     bool supportsCodec(const std::string& codec_name);
     bool EncodeFrame(const VideoFrame& input_image);
     bool setEncoderParams(const VideoCodec* codec_settings);
@@ -46,7 +48,9 @@ private:
     std::unique_ptr<AVHWFramesContext, decltype(&av_buffer_unref)> m_HwFramesContext;
 
 //#if defined(WEBRTC_WIN)
-    ID3D11Device* d3dDevice_ = nullptr;
+    bool is_testing;
+    Microsoft::WRL::ComPtr<ID3D11Device> d3dDevice_;
+    Microsoft::WRL::ComPtr<ID3D11Texture2D> d3dtexture_;
 //#endif
 };
 

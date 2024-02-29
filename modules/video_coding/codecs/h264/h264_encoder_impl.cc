@@ -411,7 +411,7 @@ void H264EncoderImpl::SetRates(const RateControlParameters& parameters) {
 int32_t H264EncoderImpl::Encode(
     const VideoFrame& input_frame,
     const std::vector<VideoFrameType>* frame_types) {
-  RTC_LOG(LS_INFO) << "bigin Encoding::" << rtc::TimeNanos();
+  RTC_LOG(LS_INFO) << "Frame arrived and bigin Encoding::" << rtc::TimeNanos();
   if (encoders_.empty()) {
     ReportError();
     return WEBRTC_VIDEO_CODEC_UNINITIALIZED;
@@ -431,7 +431,7 @@ int32_t H264EncoderImpl::Encode(
                       << VideoFrameBufferTypeToString(
                              input_frame.video_frame_buffer()->type())
                       << " image to I420. Can't encode frame.";
-    return WEBRTC_VIDEO_CODEC_ENCODER_FAILURE;
+    return WEBRTC_VIDEO_CODEC_OK;
   }
   RTC_CHECK(frame_buffer->type() == VideoFrameBuffer::Type::kI420 ||
             frame_buffer->type() == VideoFrameBuffer::Type::kI420A);

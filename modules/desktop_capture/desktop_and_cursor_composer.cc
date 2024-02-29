@@ -22,6 +22,7 @@
 #include "modules/desktop_capture/mouse_cursor_monitor.h"
 #include "rtc_base/checks.h"
 #include "rtc_base/logging.h"
+#include "rtc_base/time_utils.h"
 
 namespace webrtc {
 
@@ -203,7 +204,7 @@ void DesktopAndCursorComposer::SetSharedMemoryFactory(
 }
 
 void DesktopAndCursorComposer::CaptureFrame() {
-  RTC_LOG(LS_INFO) << "starting capture frame";
+  RTC_LOG(LS_INFO) << "starting capture frame" << rtc::TimeNanos();
   if (mouse_monitor_)
     mouse_monitor_->Capture();
   desktop_capturer_->CaptureFrame();

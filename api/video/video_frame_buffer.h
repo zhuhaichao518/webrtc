@@ -78,6 +78,7 @@ class RTC_EXPORT VideoFrameBuffer : public rtc::RefCountInterface {
   virtual int height() const = 0;
 
 #ifdef WEBRTC_WIN
+  virtual void * GetUsedCounter() {return nullptr;}
   virtual Microsoft::WRL::ComPtr<ID3D11Device> GetDevice() {return nullptr;}
   virtual Microsoft::WRL::ComPtr<ID3D11Texture2D> GetTexture() {return nullptr;}
 #endif

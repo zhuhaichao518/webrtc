@@ -14,6 +14,7 @@
 
 #include <utility>
 
+#include "modules/desktop_capture/capture_settings.h"
 #include "modules/desktop_capture/desktop_frame.h"
 #include "modules/desktop_capture/win/dxgi_duplicator_controller.h"
 #include "rtc_base/checks.h"
@@ -55,10 +56,13 @@ bool DxgiFrame::Prepare(DesktopSize size, DesktopCapturer::SourceId source_id) {
                     frame->size().width() * DesktopFrame::kBytesPerPixel);
       memset(frame->data(), 0, frame->stride() * frame->size().height());
     } else {
-      //haichao:if (not support_hardware) {
-      //  frame.reset(new BasicDesktopFrame(size));
-      //}
-      frame.reset(new GPUDesktopFrame(size));
+      //Haichao: We init a frame with no device and texture and the screencapturer
+      //is responsible to set it.
+      if (DecoderSettings::hardware_accelerated){
+        frame.reset(new GPUDesktopFrame(size));
+      }else{
+        frame.reset(new BasicDesktopFrame(size));
+      }
     }
 
     frame_ = SharedDesktopFrame::Wrap(std::move(frame));

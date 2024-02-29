@@ -21,9 +21,11 @@
 #include "modules/desktop_capture/win/desktop_capture_utils.h"
 #include "modules/desktop_capture/win/dxgi_texture_mapping.h"
 #include "modules/desktop_capture/win/dxgi_texture_staging.h"
+#include "modules/desktop_capture/capture_settings.h"
 #include "rtc_base/checks.h"
 #include "rtc_base/logging.h"
 #include "rtc_base/string_utils.h"
+#include "rtc_base/time_utils.h"
 #include "rtc_base/win32.h"
 #include "system_wrappers/include/metrics.h"
 
@@ -92,7 +94,13 @@ bool DxgiOutputDuplicator::Initialize() {
       //The graphic card does not support. Use the default behavior.
       hardware_acclerated_gpu = false;
       texture_.reset(new DxgiTextureMapping(duplication_.Get()));
-    } else {
+    } else if (DecoderSettings::hardware_accelerated){
+      hardware_acclerated_gpu = true;
+      //We dont neet the texture here and directly pass the texture to output.
+      texture_.reset();
+    }
+    else {
+      hardware_acclerated_gpu = false;
       texture_.reset(new DxgiTextureStaging(device_));
     }
     return true;
@@ -182,7 +190,9 @@ bool DxgiOutputDuplicator::Duplicate(Context* context,
                                      DesktopVector offset,
                                      SharedDesktopFrame* target) {
   RTC_DCHECK(duplication_);
-  RTC_DCHECK(texture_);
+  if (!hardware_acclerated_gpu){
+    RTC_DCHECK(texture_);
+  }
   RTC_DCHECK(target);
   if (!DesktopRect::MakeSize(target->size())
            .ContainsRect(GetTranslatedDesktopRect(offset))) {
@@ -195,6 +205,7 @@ bool DxgiOutputDuplicator::Duplicate(Context* context,
   ComPtr<IDXGIResource> resource;
   _com_error error = duplication_->AcquireNextFrame(
       kAcquireTimeoutMs, &frame_info, resource.GetAddressOf());
+  RTC_LOG(LS_INFO) << "Frame Capture time: " << rtc::TimeNanos();
   if (error.Error() != S_OK && error.Error() != DXGI_ERROR_WAIT_TIMEOUT) {
     RTC_LOG(LS_ERROR) << "Failed to capture frame: "
                       << desktop_capture::utils::ComErrorToString(error);
@@ -212,19 +223,19 @@ bool DxgiOutputDuplicator::Duplicate(Context* context,
     DetectUpdatedRegion(frame_info, &context->updated_region);
     SpreadContextChange(context);
     if (hardware_acclerated_gpu){
-      if (!texture_->GPUCopyFrom(frame_info, resource.Get())) {
+      /*if (!texture_->GPUCopyFrom(frame_info, resource.Get())) {
         return false;
-      }
+      }*/
+      //TODO(Haichao): copy the texture frome resource to target
     } else if (!texture_->CopyFrom(frame_info, resource.Get())) {
       return false;
     }
     updated_region.AddRegion(context->updated_region);
     // TODO(zijiehe): Figure out why clearing context->updated_region() here
     // triggers screen flickering?
-
-    const DesktopFrame& source = texture_->AsDesktopFrame();
     
     if (!hardware_acclerated_gpu){
+      const DesktopFrame& source = texture_->AsDesktopFrame();
       if (rotation_ != Rotation::CLOCK_WISE_0) {
         for (DesktopRegion::Iterator it(updated_region); !it.IsAtEnd();
             it.Advance()) {
@@ -243,36 +254,39 @@ bool DxgiOutputDuplicator::Duplicate(Context* context,
           target->CopyPixelsFrom(source, it.rect().top_left(), dest_rect);
         }
       }
-
+      last_frame_ = target->Share();
     } 
     else {
       //We pass the d3d device comptr to frame just in case it is released before texuture.
-      target->SetDevice(device_.d3d_device_com());
-      if (texture_->GPUTexture() == nullptr) {
-        return false;
+      if (target->GetDevice() == nullptr){
+        target->SetDevice(device_.d3d_device_com());
       }
-      target->SetTexture(texture_->GPUTexture());
+      if (target->GPUTexture() == nullptr) {
+        //TODO(Haichao):Create D3D11texture for target.
+      }
+      //CopyResource
+      //Context->CopyResource
+      //Todo::need to set in_use to false when encode is succeed.
+      target->in_use = true;
+      //target->SetTexture(texture_->GPUTexture());
     }
 
-    last_frame_ = target->Share();
     last_frame_offset_ = offset;
     updated_region.Translate(offset.x(), offset.y());
     target->mutable_updated_region()->AddRegion(updated_region);
     target->set_may_contain_cursor(cursor_embedded_in_frame);
     num_frames_captured_++;
-    //Haichao: Maybe we do not want to release the texture here because nvenc may not have encoded it yet?
-    return texture_->Release() && ReleaseFrame();
+    if (texture_){
+      texture_->Release();
+    }
+    return ReleaseFrame();
   }
 
-  if (last_frame_) {
+  if (last_frame_ && !hardware_acclerated_gpu) {
     // No change since last frame or AcquireNextFrame() timed out, we will
     // export last frame to the target.
     for (DesktopRegion::Iterator it(updated_region); !it.IsAtEnd();
          it.Advance()) {
-      if (hardware_acclerated_gpu){
-        target->SetDevice(device_.d3d_device_com());
-        target->SetTexture(last_frame_->GetTexture());
-      }else{
         // The DesktopRect in `source`, starts from last_frame_offset_.
         DesktopRect source_rect = it.rect();
         // The DesktopRect in `target`, starts from offset.

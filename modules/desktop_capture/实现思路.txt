@@ -1,0 +1,81 @@
+实现思路：
+\webrtc\src\modules\desktop_capture\win\screen_capturer_win_directx.cc
+  ScreenCaptureFrameQueue<DxgiFrame>& frames =
+      frame_queue_map_[current_screen_id_];
+我们用一个DxgiFrameHW继承一下
+
+startcapture之前设置是否以硬件编码 否则应该不生效 不然动态改动不好做。
+
+DxgiFrame2应该会提前创建好texture2d 我希望实现在prepare函数里面
+  if (!frame->Prepare(SelectedDesktopSize(monitor_id), monitor_id)) {
+    return Result::FRAME_PREPARE_FAILED;
+  }
+更新:不需要prepare texture2d 让duplicator自己传递维护的device并且设置texture进来(如果是null的话)。
+
+我们不应该使用texture_staging创建的texture 而是直接copy到target的texture里面
+调用share的时候应当创建一个
+
+std::atomic<bool> shared_bool;
+DxgiFrame2应该有一个原子变量叫in_use 代表目前ffmpeg是否在处理这一帧
+12个应该够用 sunshine里就是12个
+
+  // Directly pass device and texture if it is in GPU.
+  // Haichao: Why sometimes texture is nullptr?
+  这里应该把frame的计数器+1
+  //Todo:假如下一帧没变 不需要调用onframe
+  if (frame->GetTexture() != nullptr){
+    rtc::scoped_refptr<webrtc::NativeHandleBuffer> native_buffer = rtc::make_ref_counted<webrtc::NativeHandleBuffer>(frame->GetDevice(), frame->GetTexture(), w_ > 0 ? w_ : width,
+    h_ > 0 ? h_ : height);
+    OnFrame(webrtc::VideoFrame(native_buffer, 0, rtc::TimeMillis(),
+                               webrtc::kVideoRotation_0));
+    return;
+  }
+
+
+TODO:
+refactor这样一个shared_ptr (scopedref):
+
+加在VideoFrame里面,替换之前的GetDevice接口(析构的时候记得delete它):
+NativeImage * native_image_;
+struct NativeImage
+{
+    std::atomic<bool> in_use;
+    ID3D11Device* device;
+    ID3D11Texture2D* texture;
+    NativeImage():in_use(false),device(nullptr),texture(nullptr){
+    }
+    ~NativeImage(){
+        if (device!=nullptr){
+            device->Release();
+        }
+        if (texture!=nullptr){
+            texture->Release();
+        }
+        in_use = false;
+    }
+}
+
+SetDevice(ID3D11Device* device){
+    if (native_image_->device == device) return;
+    if (native_image_->device != null){
+        native_image_->device->Release();
+    }
+    native_image_->device = device;
+    device->Addref();
+}
+
+SetTexture(ID3D11Texture2D* texture){
+    if (native_image_->texture == texture) return;
+    if (native_image_->texture != null){
+        native_image_->texture->Release();
+    }
+    texture->Addref();
+    native_image_->texture = texture;
+}
+
+当从list选出这一帧的时侯初始化它的VideoFrame成员变量的 in_use应该置为true,
+直到ffmpeg解码完毕才应该置为false.
+capturer负责SetDevice SetTexture赋予device和texture():
+
+解码的时候应该能拿到native_image_变量 如果不为null应该可以拿到一个in_use=true(到时候dcheck一下)的
+指针

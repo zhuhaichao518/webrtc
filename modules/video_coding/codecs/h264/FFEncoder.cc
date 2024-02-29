@@ -17,7 +17,7 @@ struct ScopedPtrAVFreePacket {
 };
 typedef std::unique_ptr<AVPacket, ScopedPtrAVFreePacket> ScopedAVPacket;
 
-FFEncoder::FFEncoder():hardware(true) {}
+FFEncoder::FFEncoder():hardware(true),is_testing(true) {}
 
 FFEncoder::~FFEncoder() {
   if (d3dDevice_) {
@@ -29,8 +29,6 @@ void do_nothing(void *) {}
 
 bool FFEncoder::init(const std::string& codec_name, const VideoCodec* codec_settings) {
     int ret;
-
-    d3dDevice_ = (ID3D11Device *)hw_device;
 
     /* find the H.264 video encoder */
     const AVCodec* codec = avcodec_find_encoder_by_name(codec_name.c_str());
@@ -52,8 +50,8 @@ bool FFEncoder::init(const std::string& codec_name, const VideoCodec* codec_sett
     av_context_->codec_id = AV_CODEC_ID_H264;
     av_context_->width     = codec_settings->width;
     av_context_->height    = codec_settings->height;
-    av_context_->time_base = AVRational { 1, codec_settings->maxFramerate };
-    av_context_->framerate = AVRational { codec_settings->maxFramerate, 1 };
+    av_context_->time_base = AVRational { 1, (int)codec_settings->maxFramerate };
+    av_context_->framerate = AVRational { (int)codec_settings->maxFramerate, 1 };
     //Todo(Haichao):Add hevc and hevc_main_10 support.
     av_context_->profile = FF_PROFILE_H264_HIGH;
 
@@ -92,7 +90,19 @@ bool FFEncoder::init(const std::string& codec_name, const VideoCodec* codec_sett
     //Haichao:Linux & mac is different.
     av_context_->sw_pix_fmt = AV_PIX_FMT_NV12;
 
-    if (hardware){
+}
+
+//
+bool FFEncoder::ContinueInit(const VideoFrame& input_image){
+  if (hardware){
+    d3dtexture_ = input_image.video_frame_buffer()->GetTexture();
+  }
+  d3dDevice_ = (ID3D11Device *)hw_device;
+  if (input_image.GetDevice() == nullptr){
+    hardware = false;
+  }
+
+  if (hardware){
       av_context_->pix_fmt = AV_PIX_FMT_D3D11;
       
       // make hardware device context
@@ -169,9 +179,12 @@ bool FFEncoder::init(const std::string& codec_name, const VideoCodec* codec_sett
 }
 
 bool FFEncoder::EncodeFrame(const VideoFrame& input_image){
-    if (d3dDevice_ == nullptr){
-      if (input_image->)
+    rtc::scoped_refptr<I420BufferInterface> frame_buffer =
+      input_frame.video_frame_buffer()->ToI420();
+    if (frame_buffer == nullptr){
+      hardware = true;
     } 
+    ContinueInit(input_image);
     if (hardware){
         
     }
