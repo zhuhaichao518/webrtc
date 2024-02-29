@@ -13,11 +13,12 @@
 
 #include <stdint.h>
 
-#ifdef WEBRTC_WIN
+//#ifdef WEBRTC_WIN
+#include <atomic>
 #include <d3d11.h>
 //It is strage that microsoft keeps 'interface' as a key word,
 #include <wrl/client.h>
-#endif
+//#endif
 
 #include "api/array_view.h"
 #include "api/scoped_refptr.h"
@@ -34,6 +35,49 @@ class I010BufferInterface;
 class I210BufferInterface;
 class I410BufferInterface;
 class NV12BufferInterface;
+
+// This is the platform image in the GPU memory with kNative type.
+// For windows, we restore the D3D11Texture and Device (to keep them not destructed during encoder handling)
+// We keep a automic bool to ensure it is not in use(GPU still encoding the frame).
+// The capturer is responsible to set in_use_ to false when it fails to
+// captuer a frame, and the encoder should set in_use_ to false after it handles
+// the frame (both when succed and failed).
+// It should always be used as a scpoed_ref pointer to aviod unexpected deleting GPU resource.
+// This is windows version, and should be IOSurface on Mac.
+class NativeImage : public rtc::RefCountInterface
+{
+  public:
+  std::atomic<bool> in_use_;
+  ID3D11Device* device_;
+  ID3D11Texture2D* texture_;
+  NativeImage():in_use_(false),device_(nullptr),texture_(nullptr){
+  }
+  void SetDevice(ID3D11Device* device){
+    if (device_ == device) return;
+    if (device_ != nullptr){
+        device_->Release();
+    }
+    device_ = device;
+    device_->AddRef();
+  }
+  void SetTexture(ID3D11Texture2D* texture){
+    if (texture_ == texture) return;
+    if (texture_ != nullptr){
+        texture_->Release();
+    }
+    texture_ = texture;
+    texture_->AddRef();
+  }
+  ~NativeImage() override{
+      if (device_!=nullptr){
+          device_->Release();
+      }
+      if (texture_!=nullptr){
+          texture_->Release();
+      }
+      in_use_ = false;
+  }
+};
 
 // Base class for frame buffers of different types of pixel format and storage.
 // The tag in type() indicates how the data is represented, and each type is
@@ -77,11 +121,15 @@ class RTC_EXPORT VideoFrameBuffer : public rtc::RefCountInterface {
   virtual int width() const = 0;
   virtual int height() const = 0;
 
-#ifdef WEBRTC_WIN
-  virtual void * GetUsedCounter() {return nullptr;}
+//#ifdef WEBRTC_WIN
+  // returns the DesktopFrame 
+  virtual rtc::scoped_refptr<NativeImage> GetNativeImage() {return nullptr;}
+/*virtual void * GetUsedCounter() {return nullptr;}
   virtual Microsoft::WRL::ComPtr<ID3D11Device> GetDevice() {return nullptr;}
   virtual Microsoft::WRL::ComPtr<ID3D11Texture2D> GetTexture() {return nullptr;}
-#endif
+  */
+
+//#endif
   // Returns a memory-backed frame buffer in I420 format. If the pixel data is
   // in another format, a conversion will take place. All implementations must
   // provide a fallback to I420 for compatibility with e.g. the internal WebRTC

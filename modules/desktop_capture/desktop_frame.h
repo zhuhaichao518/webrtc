@@ -20,6 +20,8 @@
 #include <wrl/client.h>
 #endif
 
+#include "api/scoped_refptr.h"
+#include "api/video/video_frame_buffer.h"
 #include "modules/desktop_capture/desktop_geometry.h"
 #include "modules/desktop_capture/desktop_region.h"
 #include "modules/desktop_capture/shared_memory.h"
@@ -153,14 +155,15 @@ class RTC_EXPORT DesktopFrame {
   // otherwise. Also returns false if the frame is empty.
   bool FrameDataIsBlack() const;
 
-#if defined(WEBRTC_WIN)
-  //This frame is currently used by encoder.
-  std::atomic<bool> in_use = false;
+//#if defined(WEBRTC_WIN)
+  rtc::scoped_refptr<webrtc::NativeImage> GetNativeImage() {return native_image_;}
+/*
   void SetDevice(Microsoft::WRL::ComPtr<ID3D11Device> device) { device_ = device; }
   void SetTexture(Microsoft::WRL::ComPtr<ID3D11Texture2D> texture) { texture_ = texture; }
   Microsoft::WRL::ComPtr<ID3D11Device> GetDevice() {return device_; }
   Microsoft::WRL::ComPtr<ID3D11Texture2D> GetTexture() {return texture_; }
-#endif
+*/
+//#endif
 
  protected:
   DesktopFrame(DesktopSize size,
@@ -168,8 +171,7 @@ class RTC_EXPORT DesktopFrame {
                uint8_t* data,
                SharedMemory* shared_memory
 #if defined(WEBRTC_WIN)
-               ,Microsoft::WRL::ComPtr<ID3D11Device> device,// = nullptr,
-               Microsoft::WRL::ComPtr<ID3D11Texture2D> texture// = nullptr
+               ,rtc::scoped_refptr<NativeImage> native_image
 #endif                    
                );
 
@@ -190,11 +192,12 @@ class RTC_EXPORT DesktopFrame {
   int64_t capture_time_ms_;
   uint32_t capturer_id_;
   std::vector<uint8_t> icc_profile_;
-#if defined(WEBRTC_WIN)
+//#if defined(WEBRTC_WIN)
   // We need it to aviod a copy to memory and directly send it to ffmpeg(NVENC) encoder.
-  Microsoft::WRL::ComPtr<ID3D11Device> device_;
-  Microsoft::WRL::ComPtr<ID3D11Texture2D> texture_;
-#endif
+  /*Microsoft::WRL::ComPtr<ID3D11Device> device_;
+  Microsoft::WRL::ComPtr<ID3D11Texture2D> texture_;*/
+  rtc::scoped_refptr<NativeImage> native_image_;
+//#endif
 };
 
 // A DesktopFrame that stores data in the heap.

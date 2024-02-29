@@ -53,8 +53,7 @@ SharedDesktopFrame::SharedDesktopFrame(rtc::scoped_refptr<Core> core)
                    (*core)->data(),
                    (*core)->shared_memory()
 #ifdef WEBRTC_WIN
-                   ,(*core)->GetDevice(),
-                   (*core)->GetTexture()
+                   ,(*core)->GetNativeImage()
 #endif
                   ),
       core_(core) {

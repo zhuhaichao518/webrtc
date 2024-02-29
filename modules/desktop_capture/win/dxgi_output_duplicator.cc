@@ -185,6 +185,58 @@ bool DxgiOutputDuplicator::ContainsMouseCursor(
                         cursor_embedded_in_frame);
   return cursor_embedded_in_frame;
 }
+/*
+ID3D11Texture2D* CopyOrUpdateTexture(ID3D11Texture2D* texture) {
+  RTC_DCHECK(texture);
+  D3D11_TEXTURE2D_DESC desc = {0};
+  texture->GetDesc(&desc);
+
+  desc.ArraySize = 1;
+  desc.BindFlags = 0;
+  desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+  desc.MipLevels = 1;
+  desc.MiscFlags = 0;
+  desc.SampleDesc.Count = 1;
+  desc.SampleDesc.Quality = 0;
+  desc.Usage = D3D11_USAGE_STAGING;
+  if (stage_) {
+    AssertStageAndSurfaceAreSameObject();
+    D3D11_TEXTURE2D_DESC current_desc;
+    stage_->GetDesc(&current_desc);
+    const bool recreate_needed =
+        (memcmp(&desc, &current_desc, sizeof(D3D11_TEXTURE2D_DESC)) != 0);
+    RTC_HISTOGRAM_BOOLEAN("WebRTC.DesktopCapture.StagingTextureRecreate",
+                          recreate_needed);
+    if (!recreate_needed) {
+      return true;
+    }
+
+    // The descriptions are not consistent, we need to create a new
+    // ID3D11Texture2D instance.
+    stage_.Reset();
+    surface_.Reset();
+  } else {
+    RTC_DCHECK(!surface_);
+  }
+
+  _com_error error = device_.d3d_device()->CreateTexture2D(
+      &desc, nullptr, stage_.GetAddressOf());
+  if (error.Error() != S_OK || !stage_) {
+    RTC_LOG(LS_ERROR) << "Failed to create a new ID3D11Texture2D as stage: "
+                      << desktop_capture::utils::ComErrorToString(error);
+    return false;
+  }
+
+  error = stage_.As(&surface_);
+  if (error.Error() != S_OK || !surface_) {
+    RTC_LOG(LS_ERROR) << "Failed to convert ID3D11Texture2D to IDXGISurface: "
+                      << desktop_capture::utils::ComErrorToString(error);
+    return false;
+  }
+
+  return true;
+}
+*/
 
 bool DxgiOutputDuplicator::Duplicate(Context* context,
                                      DesktopVector offset,
@@ -258,16 +310,25 @@ bool DxgiOutputDuplicator::Duplicate(Context* context,
     } 
     else {
       //We pass the d3d device comptr to frame just in case it is released before texuture.
-      if (target->GetDevice() == nullptr){
-        target->SetDevice(device_.d3d_device_com());
+      if (target->GetNativeImage()->device_ == nullptr){
+        target->GetNativeImage()->device_ = device_.d3d_device();
+      }else{
+        //Assert they are the same device
+        RTC_DCHECK_EQ(target->GetNativeImage()->device_,device_.d3d_device());
       }
-      if (target->GPUTexture() == nullptr) {
+      if (target->GetNativeImage()->texture_ == nullptr) {
+        target->GetNativeImage()->texture_ = nullptr;
         //TODO(Haichao):Create D3D11texture for target.
+      }else{
+        target->GetNativeImage()->texture_ = nullptr;
+        //TODO(Haichao):If texture size are same , copyresource
+
+        //else recreate texture because frame size has changed.
       }
-      //CopyResource
-      //Context->CopyResource
-      //Todo::need to set in_use to false when encode is succeed.
-      target->in_use = true;
+      //need to set in_use to false when encode is succeed.
+      //It should had been set before here, setting here is 
+      //just in case.
+      target->GetNativeImage()->in_use_ = true;
       //target->SetTexture(texture_->GPUTexture());
     }
 
@@ -287,14 +348,13 @@ bool DxgiOutputDuplicator::Duplicate(Context* context,
     // export last frame to the target.
     for (DesktopRegion::Iterator it(updated_region); !it.IsAtEnd();
          it.Advance()) {
-        // The DesktopRect in `source`, starts from last_frame_offset_.
-        DesktopRect source_rect = it.rect();
-        // The DesktopRect in `target`, starts from offset.
-        DesktopRect target_rect = source_rect;
-        source_rect.Translate(last_frame_offset_);
-        target_rect.Translate(offset);
-        target->CopyPixelsFrom(*last_frame_, source_rect.top_left(), target_rect);
-      }
+      // The DesktopRect in `source`, starts from last_frame_offset_.
+      DesktopRect source_rect = it.rect();
+      // The DesktopRect in `target`, starts from offset.
+      DesktopRect target_rect = source_rect;
+      source_rect.Translate(last_frame_offset_);
+      target_rect.Translate(offset);
+      target->CopyPixelsFrom(*last_frame_, source_rect.top_left(), target_rect);
     }
     updated_region.Translate(offset.x(), offset.y());
     target->mutable_updated_region()->AddRegion(updated_region);

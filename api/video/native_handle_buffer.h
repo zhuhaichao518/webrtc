@@ -16,9 +16,9 @@ class NativeHandleBuffer : public VideoFrameBuffer {
  public:
   //TODO(Haichao): support MacOS?
 #ifdef WEBRTC_WIN
-  NativeHandleBuffer(Microsoft::WRL::ComPtr<ID3D11Device> device, 
-   Microsoft::WRL::ComPtr<ID3D11Texture2D> texture, int width, int height)
-      : device_(device), texture_(texture), width_(width), height_(height) {}
+  NativeHandleBuffer(/*Microsoft::WRL::ComPtr<ID3D11Device> device, 
+   Microsoft::WRL::ComPtr<ID3D11Texture2D> texture,*/rtc::scoped_refptr<NativeImage> native_image, int width, int height)
+      : native_image_(native_image), width_(width), height_(height) {}
 #endif
 #ifdef WEBRTC_MAC
 //IOSurface?
@@ -32,16 +32,18 @@ class NativeHandleBuffer : public VideoFrameBuffer {
     return nullptr;
   }
 
-#ifdef WEBRTC_WIN
-  Microsoft::WRL::ComPtr<ID3D11Device> GetDevice() override {return device_; }
-  Microsoft::WRL::ComPtr<ID3D11Texture2D> GetTexture() override {return texture_; }
-#endif
+//#ifdef WEBRTC_WIN
+  rtc::scoped_refptr<NativeImage> GetNativeImage() override {return native_image_;}
+  //Microsoft::WRL::ComPtr<ID3D11Device> GetDevice() override {return device_; }
+  //Microsoft::WRL::ComPtr<ID3D11Texture2D> GetTexture() override {return texture_; }
+//#endif
 
  private:
-#ifdef WEBRTC_WIN
-  Microsoft::WRL::ComPtr<ID3D11Device> device_;
-  Microsoft::WRL::ComPtr<ID3D11Texture2D> texture_;
-#endif
+//#ifdef WEBRTC_WIN
+  rtc::scoped_refptr<NativeImage> native_image_;
+  //Microsoft::WRL::ComPtr<ID3D11Device> device_;
+  //Microsoft::WRL::ComPtr<ID3D11Texture2D> texture_;
+//#endif
   const int width_;
   const int height_;
 };

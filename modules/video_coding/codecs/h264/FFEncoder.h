@@ -50,7 +50,7 @@ private:
 //#if defined(WEBRTC_WIN)
     bool is_testing;
     Microsoft::WRL::ComPtr<ID3D11Device> d3dDevice_;
-    Microsoft::WRL::ComPtr<ID3D11Texture2D> d3dtexture_;
+    //Microsoft::WRL::ComPtr<ID3D11Texture2D> d3dtexture_;
 //#endif
 };
 

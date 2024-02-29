@@ -20,7 +20,7 @@ WgcDesktopFrame::WgcDesktopFrame(DesktopSize size,
     : DesktopFrame(size, stride, image_data.data(), nullptr
 #ifdef WEBRTC_WIN
 //todo: add texture support to WgcCapture.
-    ,nullptr, nullptr
+    ,nullptr
 #endif
     ),
       image_data_(std::move(image_data)) {}

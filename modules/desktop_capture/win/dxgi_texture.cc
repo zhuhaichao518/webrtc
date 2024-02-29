@@ -33,9 +33,7 @@ class DxgiDesktopFrame : public DesktopFrame {
                      texture.bits(),
                      nullptr
 #ifdef WEBRTC_WIN
-                     ,nullptr,
-                     
-                     texture.GPUTexture()
+                     ,nullptr
 #endif
                      ) {}
 

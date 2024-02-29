@@ -23,7 +23,7 @@ DesktopFrameWin::DesktopFrameWin(DesktopSize size,
                                  HBITMAP bitmap)
     : DesktopFrame(size, stride, data, shared_memory.get()
 #ifdef WEBRTC_WIN
-    , nullptr, nullptr
+    , nullptr
 #endif
     ),
       bitmap_(bitmap),

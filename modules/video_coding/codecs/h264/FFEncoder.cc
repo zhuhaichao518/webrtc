@@ -95,7 +95,7 @@ bool FFEncoder::init(const std::string& codec_name, const VideoCodec* codec_sett
 //
 bool FFEncoder::ContinueInit(const VideoFrame& input_image){
   if (hardware){
-    d3dtexture_ = input_image.video_frame_buffer()->GetTexture();
+    scoped_refptr<NativeImage> d3dtexture_ = input_image.video_frame_buffer()->GetNativeImage().device_;
   }
   d3dDevice_ = (ID3D11Device *)hw_device;
   if (input_image.GetDevice() == nullptr){

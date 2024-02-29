@@ -30,8 +30,7 @@ DesktopFrame::DesktopFrame(DesktopSize size,
                            uint8_t* data,
                            SharedMemory* shared_memory
 #ifdef WEBRTC_WIN
-                           ,Microsoft::WRL::ComPtr<ID3D11Device> device,
-                           Microsoft::WRL::ComPtr<ID3D11Texture2D> texture
+                           ,rtc::scoped_refptr<NativeImage> native_image
 #endif
                            )
     : data_(data),
@@ -42,8 +41,9 @@ DesktopFrame::DesktopFrame(DesktopSize size,
       capturer_id_(DesktopCapturerId::kUnknown)
 {
 #ifdef WEBRTC_WIN
-  device_ = device;
-  texture_ = texture;
+  //device_ = device;
+  //texture_ = texture;
+  native_image_ = native_image;
 #endif
   RTC_DCHECK(size_.width() >= 0);
   RTC_DCHECK(size_.height() >= 0);
@@ -181,7 +181,7 @@ BasicDesktopFrame::BasicDesktopFrame(DesktopSize size)
                    new uint8_t[kBytesPerPixel * size.width() * size.height()](),
                    nullptr
 #ifdef WEBRTC_WIN
-                   ,nullptr,nullptr
+                   ,nullptr
 #endif
                    ) {}
 
@@ -209,7 +209,7 @@ GPUDesktopFrame::GPUDesktopFrame(DesktopSize size)
                    nullptr,
                    nullptr
 #ifdef WEBRTC_WIN
-                   ,nullptr,nullptr
+                   ,nullptr
 #endif
                    ) {}
 
@@ -246,8 +246,7 @@ SharedMemoryDesktopFrame::SharedMemoryDesktopFrame(DesktopSize size,
                    reinterpret_cast<uint8_t*>(shared_memory->data()),
                    shared_memory
 #ifdef WEBRTC_WIN 
-                   ,nullptr,
-                   nullptr
+                   ,nullptr
 #endif
                    ) {}
 
