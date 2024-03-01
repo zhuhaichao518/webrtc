@@ -20,6 +20,8 @@
 #include <limits>
 #include <string>
 
+#include "modules/desktop_capture/capture_settings.h"
+
 #include "absl/strings/match.h"
 #include "absl/types/optional.h"
 #include "api/video/video_codec_constants.h"
@@ -411,6 +413,11 @@ void H264EncoderImpl::SetRates(const RateControlParameters& parameters) {
 int32_t H264EncoderImpl::Encode(
     const VideoFrame& input_frame,
     const std::vector<VideoFrameType>* frame_types) {
+
+  //if (DecoderSettings::is_debugging_){
+  //  DecoderSettings::showFrame(input_frame.video_frame_buffer()->GetNativeImage()->device_,input_frame.video_frame_buffer()->GetNativeImage()->texture_,input_frame.video_frame_buffer()->width(),input_frame.video_frame_buffer()->height());
+  //}
+
   RTC_LOG(LS_INFO) << "Frame arrived and bigin Encoding::" << rtc::TimeNanos();
   if (encoders_.empty()) {
     ReportError();

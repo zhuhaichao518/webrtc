@@ -9,15 +9,14 @@
  */
 
 #include "modules/desktop_capture/desktop_frame.h"
-/*
-#include <d3d11.h>
-*/
+
 #include <string.h>
 
 #include <cmath>
 #include <memory>
 #include <utility>
 
+#include "api/make_ref_counted.h"
 #include "modules/desktop_capture/desktop_capture_types.h"
 #include "modules/desktop_capture/desktop_geometry.h"
 #include "rtc_base/checks.h"
@@ -209,7 +208,7 @@ GPUDesktopFrame::GPUDesktopFrame(DesktopSize size)
                    nullptr,
                    nullptr
 #ifdef WEBRTC_WIN
-                   ,nullptr
+                   ,rtc::make_ref_counted<NativeImage>()
 #endif
                    ) {}
 

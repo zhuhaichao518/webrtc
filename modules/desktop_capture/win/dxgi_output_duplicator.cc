@@ -185,12 +185,23 @@ bool DxgiOutputDuplicator::ContainsMouseCursor(
                         cursor_embedded_in_frame);
   return cursor_embedded_in_frame;
 }
-/*
-ID3D11Texture2D* CopyOrUpdateTexture(ID3D11Texture2D* texture) {
-  RTC_DCHECK(texture);
-  D3D11_TEXTURE2D_DESC desc = {0};
-  texture->GetDesc(&desc);
 
+bool CopyOrUpdateTexture(ID3D11Device* device, ID3D11Texture2D** target_texture, IDXGIResource* resource) {
+  
+  ComPtr<ID3D11Texture2D> latest_texture;
+  _com_error error = resource->QueryInterface(
+      __uuidof(ID3D11Texture2D),
+      reinterpret_cast<void**>(latest_texture.GetAddressOf()));
+  if (error.Error() != S_OK || !latest_texture) {
+    RTC_LOG(LS_ERROR) << "Failed to convert IDXGIResource to ID3D11Texture2D: "
+                      << desktop_capture::utils::ComErrorToString(error);
+    return false;
+  }
+  
+  RTC_DCHECK(latest_texture);
+  D3D11_TEXTURE2D_DESC desc = {0};
+  latest_texture->GetDesc(&desc);
+/* for staging
   desc.ArraySize = 1;
   desc.BindFlags = 0;
   desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
@@ -199,44 +210,41 @@ ID3D11Texture2D* CopyOrUpdateTexture(ID3D11Texture2D* texture) {
   desc.SampleDesc.Count = 1;
   desc.SampleDesc.Quality = 0;
   desc.Usage = D3D11_USAGE_STAGING;
-  if (stage_) {
-    AssertStageAndSurfaceAreSameObject();
+*/
+  desc.Usage            = D3D11_USAGE_DEFAULT;
+  desc.BindFlags        = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+  desc.MipLevels        = 1;
+  desc.ArraySize        = 1;
+  desc.SampleDesc.Count = 1;
+  bool recreate_needed = true;
+  if (*target_texture) {
     D3D11_TEXTURE2D_DESC current_desc;
-    stage_->GetDesc(&current_desc);
-    const bool recreate_needed =
-        (memcmp(&desc, &current_desc, sizeof(D3D11_TEXTURE2D_DESC)) != 0);
-    RTC_HISTOGRAM_BOOLEAN("WebRTC.DesktopCapture.StagingTextureRecreate",
-                          recreate_needed);
-    if (!recreate_needed) {
-      return true;
+    (*target_texture)->GetDesc(&current_desc);
+    recreate_needed = (current_desc.Width != desc.Width) || (current_desc.Height != desc.Height);
+       // (memcmp(&desc, &current_desc, sizeof(D3D11_TEXTURE2D_DESC)) != 0);
+  }
+
+  if (recreate_needed) {
+    if (*target_texture) {
+      RTC_CHECK_EQ((*target_texture)->Release(), 0);
     }
-
-    // The descriptions are not consistent, we need to create a new
-    // ID3D11Texture2D instance.
-    stage_.Reset();
-    surface_.Reset();
-  } else {
-    RTC_DCHECK(!surface_);
+    _com_error error = device->CreateTexture2D(&desc, nullptr, target_texture);
+    if (error.Error() != S_OK || !*target_texture) {
+      RTC_LOG(LS_ERROR) << "Failed to create a new ID3D11Texture2D: "
+                        << desktop_capture::utils::ComErrorToString(error);
+      return false;
+    }
   }
 
-  _com_error error = device_.d3d_device()->CreateTexture2D(
-      &desc, nullptr, stage_.GetAddressOf());
-  if (error.Error() != S_OK || !stage_) {
-    RTC_LOG(LS_ERROR) << "Failed to create a new ID3D11Texture2D as stage: "
-                      << desktop_capture::utils::ComErrorToString(error);
-    return false;
-  }
+  ID3D11DeviceContext* context = nullptr;
+  device->GetImmediateContext(&context);
 
-  error = stage_.As(&surface_);
-  if (error.Error() != S_OK || !surface_) {
-    RTC_LOG(LS_ERROR) << "Failed to convert ID3D11Texture2D to IDXGISurface: "
-                      << desktop_capture::utils::ComErrorToString(error);
-    return false;
-  }
-
+  context->CopyResource(static_cast<ID3D11Resource*>(*target_texture),
+                        static_cast<ID3D11Resource*>(latest_texture.Get()));
+  context->Release();
   return true;
 }
-*/
+
 
 bool DxgiOutputDuplicator::Duplicate(Context* context,
                                      DesktopVector offset,
@@ -306,31 +314,27 @@ bool DxgiOutputDuplicator::Duplicate(Context* context,
           target->CopyPixelsFrom(source, it.rect().top_left(), dest_rect);
         }
       }
-      last_frame_ = target->Share();
     } 
     else {
       //We pass the d3d device comptr to frame just in case it is released before texuture.
       if (target->GetNativeImage()->device_ == nullptr){
         target->GetNativeImage()->device_ = device_.d3d_device();
       }else{
-        //Assert they are the same device
+        //Assert they are the same device.
+        //Haichao: maybe it is possible the device is changed. directly set should be
+        //fine. target->GetNativeImage()->SetDevice should handle the release of previous one.
         RTC_DCHECK_EQ(target->GetNativeImage()->device_,device_.d3d_device());
       }
-      if (target->GetNativeImage()->texture_ == nullptr) {
-        target->GetNativeImage()->texture_ = nullptr;
-        //TODO(Haichao):Create D3D11texture for target.
-      }else{
-        target->GetNativeImage()->texture_ = nullptr;
-        //TODO(Haichao):If texture size are same , copyresource
 
-        //else recreate texture because frame size has changed.
-      }
+      CopyOrUpdateTexture(device_.d3d_device(),&(target->GetNativeImage()->texture_),resource.Get());
+
       //need to set in_use to false when encode is succeed.
       //It should had been set before here, setting here is 
       //just in case.
       target->GetNativeImage()->in_use_ = true;
       //target->SetTexture(texture_->GPUTexture());
     }
+    last_frame_ = target->Share();
 
     last_frame_offset_ = offset;
     updated_region.Translate(offset.x(), offset.y());

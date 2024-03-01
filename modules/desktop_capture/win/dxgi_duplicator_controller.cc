@@ -498,6 +498,7 @@ bool DxgiDuplicatorController::EnsureFrameCaptured(Context* context,
 
     // Sleep `ms_per_frame` before attempting to capture the next frame to
     // ensure the video adapter has time to update the screen.
+    // TODO1:Haichao: change this?
     webrtc::SleepMs(ms_per_frame);
   }
   return true;

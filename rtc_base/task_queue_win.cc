@@ -331,6 +331,12 @@ bool TaskQueueWin::ProcessQueuedMessages() {
           break;
         }
         case WM_TIMER: {
+          //Haichao:: for test. does not work.
+          //if (timer_id_ != msg.wParam) {
+          //  ::TranslateMessage(&msg);
+          //  ::DispatchMessage(&msg);
+          //  break;
+          //}
           RTC_DCHECK_EQ(timer_id_, msg.wParam);
           ::KillTimer(nullptr, msg.wParam);
           timer_id_ = 0;
@@ -339,6 +345,9 @@ bool TaskQueueWin::ProcessQueuedMessages() {
           break;
         }
         default:
+          // Haichao:: for test
+          //::TranslateMessage(&msg);
+          //::DispatchMessage(&msg);
           RTC_DCHECK_NOTREACHED();
           break;
       }
