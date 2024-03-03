@@ -134,15 +134,27 @@ void ScreenCapturerWinDirectx::CaptureFrame() {
   // Note that the [] operator will create the ScreenCaptureFrameQueue if it
   // doesn't exist, so this is safe.
   //TODO(Haichao): have appropriate count of frames
+  /*ScreenCaptureHWFrameQueue<DxgiFrame>& frames =
+      hw_frame_queue_map_[current_screen_id_];*/
+
   ScreenCaptureFrameQueue<DxgiFrame>& frames =
       frame_queue_map_[current_screen_id_];
-
   frames.MoveToNextFrame();
 
   if (!frames.current_frame()) {
     frames.ReplaceCurrentFrame(
         std::make_unique<DxgiFrame>(shared_memory_factory_.get()));
   }
+  
+  /* For I420 buffer capture, it is fine to the frame is still shared because the
+  frame will be copied before being sent to the encoder queue. 
+  if (frames.current_frame()->frame() && frames.current_frame()->frame()->IsShared()){
+    RTC_LOG(LS_INFO) << "---------current frame is still shared";
+  }
+
+  //TODO(Haichao:) For D3D11 texutre, we need to check if the NativeImage is still be shared,
+  not the Core.
+  */
 
   DxgiDuplicatorController::Result result;
   if (current_screen_id_ == kFullDesktopScreenId) {

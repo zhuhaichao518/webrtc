@@ -22,8 +22,9 @@ class FFEncoder {
 public:
     FFEncoder();
     ~FFEncoder();
-
-    bool init(const std::string& codec_name);
+    
+    bool init(ID3D11Device* d3d11device, int width, int height);
+    bool init(const std::string& codec_name, const VideoCodec* codec_settings, ID3D11Device* d3d11device);
     bool ContinueInit(const VideoFrame& input_image);
     bool supportsCodec(const std::string& codec_name);
     bool EncodeFrame(const VideoFrame& input_image);
@@ -49,7 +50,8 @@ private:
 
 //#if defined(WEBRTC_WIN)
     bool is_testing;
-    Microsoft::WRL::ComPtr<ID3D11Device> d3dDevice_;
+    //Microsoft::WRL::ComPtr<ID3D11Device> d3dDevice_;
+    ID3D11Device * d3dDevice_;
     //Microsoft::WRL::ComPtr<ID3D11Texture2D> d3dtexture_;
 //#endif
 };

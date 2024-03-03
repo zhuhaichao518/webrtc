@@ -13,6 +13,10 @@
 
 #include <memory>
 
+#include "api/scoped_refptr.h"
+#include "rtc_base/ref_count.h"
+#include "rtc_base/ref_counted_object.h"
+
 namespace webrtc {
 
 // Represents a queue of reusable video frames. Provides access to the 'current'
@@ -67,6 +71,53 @@ class ScreenCaptureFrameQueue {
   int current_ = 0;
 
   static const int kQueueLength = 2;
+  std::unique_ptr<FrameType> frames_[kQueueLength];
+};
+
+template <typename FrameType>
+class ScreenCaptureHWFrameQueue {
+ public:
+  ScreenCaptureHWFrameQueue() = default;
+  ~ScreenCaptureHWFrameQueue() = default;
+
+  ScreenCaptureHWFrameQueue(const ScreenCaptureHWFrameQueue&) = delete;
+  ScreenCaptureHWFrameQueue& operator=(const ScreenCaptureHWFrameQueue&) = delete;
+
+  // Moves to the next frame in the queue, moving the 'current' frame to become
+  // the 'previous' one.
+  void MoveToNextFrame() { current_ = (current_ + 1) % kQueueLength;
+    rtc::scoped_refptr<rtc::FinalRefCountedObject<NativeImage>> frame_img = frames_[current_]->frame()->GetNativeImage();
+    while (frame_img->HasTwoRef()){
+      SleepMs(2);
+    }
+  }
+
+  // Replaces the current frame with a new one allocated by the caller. The
+  // existing frame (if any) is destroyed. Takes ownership of `frame`.
+  void ReplaceCurrentFrame(std::unique_ptr<FrameType> frame) {
+    frames_[current_] = std::move(frame);
+  }
+
+  // Marks all frames obsolete and resets the previous frame pointer. No
+  // frames are freed though as the caller can still access them.
+  void Reset() {
+    for (int i = 0; i < kQueueLength; i++) {
+      frames_[i].reset();
+    }
+    current_ = 0;
+  }
+
+  FrameType* current_frame() const { return frames_[current_].get(); }
+
+  FrameType* previous_frame() const {
+    return frames_[(current_ + kQueueLength - 1) % kQueueLength].get();
+  }
+
+ private:
+  // Index of the current frame.
+  int current_ = 0;
+
+  static const int kQueueLength = 12;
   std::unique_ptr<FrameType> frames_[kQueueLength];
 };
 

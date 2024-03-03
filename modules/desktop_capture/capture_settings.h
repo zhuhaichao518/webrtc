@@ -9,6 +9,12 @@ class DecoderSettings {
 public:
     static bool is_debugging_;
     static std::atomic<bool> hardware_accelerated;
+    
+    //If a configureencoder is called, set it here.
+    static std::atomic<bool> encode_setted;
+
+    static int width,height,framerate;
+
     static bool isHardwareAccelerationSupported() {
         return true;
     }

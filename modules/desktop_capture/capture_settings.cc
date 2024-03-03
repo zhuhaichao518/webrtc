@@ -11,6 +11,9 @@ namespace webrtc {
 bool DecoderSettings::is_debugging_ = false;
 std::atomic<bool> DecoderSettings::hardware_accelerated = false;
 
+std::atomic<bool> DecoderSettings::encode_setted = false;
+
+
 HWND hwnd = nullptr;
 
 LRESULT CALLBACK WndProcT(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {

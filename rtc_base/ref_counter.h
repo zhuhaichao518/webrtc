@@ -65,6 +65,14 @@ class RefCounter {
     return ref_count_.load(std::memory_order_acquire) == 1;
   }
 
+  bool HasTwoRef() const {
+    // To ensure resource protected by the reference counter has exclusive
+    // access, all changes to the resource before it was released by other
+    // threads must be visible by current thread. That is provided by release
+    // (in DecRef) and acquire (in this function) ordering.
+    return ref_count_.load(std::memory_order_acquire) == 2;
+  }
+
  private:
   std::atomic<int> ref_count_;
 };

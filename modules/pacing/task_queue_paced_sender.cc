@@ -114,7 +114,8 @@ void TaskQueuePacedSender::SetPacingRates(DataRate pacing_rate,
 
 void TaskQueuePacedSender::EnqueuePackets(
     std::vector<std::unique_ptr<RtpPacketToSend>> packets) {
-      //RTC_LOG(LS_INFO) << "TaskQueuePacedSender::EnqueuePacket:" << rtc::TimeNanos();
+  //RTC_LOG(LS_INFO) << "TaskQueuePacedSender::EnqueuePacket:" << rtc::TimeNanos();
+  //TODO(Haichao):Enqueue on every ffmpeg receive packet if possible. Currently we pack the whole frame.
   task_queue_->PostTask(
       SafeTask(safety_.flag(), [this, packets = std::move(packets)]() mutable {
         RTC_DCHECK_RUN_ON(task_queue_);

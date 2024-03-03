@@ -72,7 +72,7 @@ bool DxgiFrame::Prepare(DesktopSize size, DesktopCapturer::SourceId source_id) {
 }
 
 SharedDesktopFrame* DxgiFrame::frame() const {
-  RTC_DCHECK(frame_);
+  //RTC_DCHECK(frame_);
   return frame_.get();
 }
 

@@ -77,6 +77,7 @@ class FinalRefCountedObject final : public T {
     return status;
   }
   bool HasOneRef() const { return ref_count_.HasOneRef(); }
+  bool HasTwoRef() const { return ref_count_.HasTwoRef(); }
 
  private:
   ~FinalRefCountedObject() = default;

@@ -98,6 +98,8 @@ class RTC_EXPORT ScreenCapturerWinDirectx : public DesktopCapturer {
   // frames don't get overwritten with the data from another Duplicator/monitor.
   std::unordered_map<SourceId, ScreenCaptureFrameQueue<DxgiFrame>>
       frame_queue_map_;
+  std::unordered_map<SourceId, ScreenCaptureHWFrameQueue<DxgiFrame>>
+      hw_frame_queue_map_;
   std::unique_ptr<SharedMemoryFactory> shared_memory_factory_;
   Callback* callback_ = nullptr;
   SourceId current_screen_id_ = kFullDesktopScreenId;
